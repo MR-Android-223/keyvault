@@ -1,0 +1,249 @@
+        :root {
+            --primary: #8b5cf6;
+            --primary-dark: #7c3aed;
+            --bg: #f9fafb;
+            --surface: #ffffff;
+            --text: #374151;
+            --gray-border: #e5e7eb;
+            --danger: #ef4444;
+            --header-height: 70px;
+            --google-blue: #1a73e8;
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--bg);
+            margin: 0; padding: 0; color: var(--text);
+            height: 100vh; height: -webkit-fill-available;
+            overflow-x: hidden; display: flex; flex-direction: column;
+            padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* --- تصميم صفحة الدخول --- */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #f0f2f5;
+            z-index: 6000; display: none; /* مخفي افتراضياً ويظهر بالجافاسكريبت إذا لزم الأمر */
+            flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .login-card {
+            background: white; padding: 40px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;
+            width: 100%; max-width: 400px; font-family: 'Segoe UI', sans-serif;
+        }
+        .google-logo { width: 75px; margin-bottom: 10px; }
+        .google-btn-auth {
+            display: flex; align-items: center; justify-content: center;
+            background-color: var(--google-blue); color: white; border: none;
+            padding: 2px; border-radius: 4px; font-size: 14px;
+            font-weight: 500; cursor: pointer; width: 100%;
+            transition: background-color 0.3s; text-decoration: none;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .google-btn-auth:hover { background-color: #1765cc; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .google-icon-wrapper {
+            background: white; padding: 8px; border-radius: 2px; margin: 1px;
+            display: flex; align-items: center; justify-content: center; height: 38px; width: 38px;
+        }
+        .google-icon { width: 18px; height: 18px; }
+        .btn-text { flex: 1; text-align: center; }
+
+        /* --- تصميم التطبيق --- */
+        header {
+            height: var(--header-height); padding: 0 20px;
+            display: grid; grid-template-columns: 45px 1fr 45px;
+            align-items: center; position: relative; margin-bottom: 10px;
+            background: var(--bg);
+        }
+
+        h1 {
+            margin: 0; font-size: 20px; color: var(--primary-dark);
+            font-weight: 700; display: flex; align-items: center;
+            justify-content: center; gap: 8px; white-space: nowrap;
+        }
+
+        .menu-btn {
+            width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; cursor: pointer; background: white; color: #4b5563; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.2s;
+        }
+        .menu-btn:active { background: #e5e7eb; }
+
+        .main-menu {
+            position: absolute; top: calc(var(--header-height) + 5px); left: 20px;
+            background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            width: 280px; display: none; flex-direction: column; overflow: hidden;
+            z-index: 1000; border: 1px solid #f3f4f6;
+            animation: menuPop 0.2s ease-out;
+        }
+        @keyframes menuPop { from{opacity:0; transform:scale(0.95);} to{opacity:1; transform:scale(1);} }
+        
+        .menu-item {
+            padding: 14px 20px; cursor: pointer; border-bottom: 1px solid #f3f4f6;
+            font-size: 15px; font-weight: 500; display: flex; align-items: center; justify-content: space-between; color: #4b5563;
+        }
+        .menu-item:last-child { border-bottom: none; }
+        .menu-item:active { background: #f9fafb; }
+        .delete-item { color: var(--danger); }
+        .sync-item { background: #f0f9ff; color: var(--primary-dark); }
+        
+        .user-profile-img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
+
+        .container {
+            padding: 0 25px; flex: 1; display: flex; flex-direction: column; gap: 15px;
+            max-width: 500px; margin: 0 auto; width: 100%;
+        }
+
+        .app-input {
+            width: 100%; padding: 18px; border: 1px solid var(--gray-border);
+            border-radius: 14px; font-family: 'Tajawal', sans-serif; font-size: 16px;
+            outline: none; background: white; color: var(--text); transition: 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .app-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1); }
+
+        .btn {
+            width: 100%; padding: 16px; border: none; border-radius: 14px;
+            font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; box-shadow: 0 8px 20px -4px rgba(124, 58, 237, 0.4); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); margin-top: 5px; }
+        .btn-outline:active { background: #f5f3ff; transform: scale(0.98); }
+
+        #vaultPage {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f9fafb; z-index: 200; display: none; flex-direction: column;
+            overflow: hidden; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .vault-fixed-top {
+            padding: 10px 20px 5px 20px; background: #f9fafb; flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 10px; z-index: 10;
+        }
+
+        #vaultList {
+            flex: 1; overflow-y: auto; padding: 10px 20px 100px 20px; -webkit-overflow-scrolling: touch;
+        }
+
+        .vault-header { 
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; height: 45px;
+        }
+        .vault-title { color:#1f2937; margin:0; font-size: 20px; font-weight: 700; }
+        
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .icon-btn { 
+            background: white; border: 1px solid #e5e7eb; width: 40px; height: 40px;
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; cursor: pointer; color: var(--text); box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .icon-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .folders-bar {
+            display: flex; gap: 10px; overflow-x: auto; padding: 5px 2px 10px 2px;
+            scrollbar-width: none; -ms-overflow-style: none; flex-shrink: 0;
+        }
+        .folder-chip {
+            background: white; padding: 8px 16px; border-radius: 20px; font-size: 14px;
+            color: #6b7280; border: 1px solid #e5e7eb; white-space: nowrap; cursor: pointer;
+            transition: 0.2s; display: flex; align-items: center; gap: 5px;
+        }
+        .folder-chip.active {
+            background: var(--primary); color: white; border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+        }
+        .add-folder-btn {
+            background: #f3f4f6; color: var(--primary); font-weight: bold; width: 35px; height: 35px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            border: 1px dashed var(--primary); cursor: pointer;
+        }
+
+        .account-card {
+            background: white; padding: 15px; border-radius: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 12px; position: relative; overflow: hidden;
+            transition: transform 0.2s, background-color 0.2s;
+            border: 1px solid transparent;
+        }
+        .account-card.selected-card { background: #f5f3ff; border-color: var(--primary); }
+        .account-card.dragging { opacity: 0.6; background: #fafafa; border: 2px dashed #ccc; transform: scale(0.98); }
+        
+        .selection-check {
+            width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d1d5db;
+            display: none; align-items: center; justify-content: center; color: white;
+            flex-shrink: 0; transition: 0.2s;
+        }
+        .selected-card .selection-check { display: flex; background: var(--primary); border-color: var(--primary); }
+        
+        .drag-handle-visible {
+            color: #d1d5db; cursor: grab; padding: 5px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        
+        .card-main { flex: 1; display: flex; flex-direction: column; gap: 6px; padding-right: 5px;}
+        .card-email { font-weight: 700; color: #1f2937; font-size: 15px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; word-break: break-all;}
+        .card-pass-pill {
+            background: #f3f4f6; padding: 8px; border-radius: 50px; text-align: center;
+            font-family: monospace; color: #374151; cursor: pointer; letter-spacing: 2px; font-size: 20px;
+        }
+        .hidden-pass { color: #9ca3af; letter-spacing: 4px; font-size: 24px; line-height: 0.8;}
+
+        .bottom-action-bar {
+            position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); 
+            left: 50%; transform: translateX(-50%) translateY(150px);
+            background: #1f2937; color: white; padding: 12px 25px; border-radius: 30px;
+            display: flex; gap: 15px; align-items: center; z-index: 300; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .bottom-action-bar.visible { transform: translateX(-50%) translateY(0); }
+        .action-btn-small { background: none; border: none; color: white; font-weight: bold; cursor: pointer; font-family: 'Tajawal'; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+        .delete-btn-action { color: #ef4444; border-right: 1px solid #4b5563; padding-right: 15px; }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(3px);
+            z-index: 900; display: none; justify-content: center; align-items: center;
+            padding: 20px; opacity: 0; transition: opacity 0.2s;
+        }
+        .overlay.show { opacity: 1; }
+
+        .modal {
+            background: white; width: 100%; max-width: 320px;
+            border-radius: 24px; padding: 25px; text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            transform: scale(0.9); transition: transform 0.2s;
+        }
+        .overlay.show .modal { transform: scale(1); }
+
+        .modal h3 { margin-top: 0; color: var(--primary); }
+        .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        .btn-small { padding: 12px 20px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; flex: 1; font-size: 14px; }
+        .btn-confirm { background: var(--primary); color: white; }
+        .btn-cancel { background: #f3f4f6; color: #374151; }
+
+        .folder-list-modal { display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; text-align: right; margin-top: 15px; }
+        .folder-item-row { padding: 14px; background: #f9fafb; border-radius: 12px; cursor: pointer; font-weight: 500; border: 1px solid transparent; }
+        .folder-item-row:active { background: #e5e7eb; }
+
+        .modal-clean { background: white; width: 100%; max-width: 320px; border-radius: 24px; padding: 0; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+        .action-item { display: flex; align-items: center; justify-content: space-between; padding: 18px 25px; border-bottom: 1px solid #f3f4f6; cursor: pointer; color: #374151; font-weight: 500; }
+        .action-item:last-child { border-bottom: none; color: var(--danger); }
+
+        .toast {
+            position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
+            background: #1f2937; color: white; padding: 10px 20px; border-radius: 30px;
+            font-size: 14px; opacity: 0; transition: 0.3s; pointer-events: none; z-index: 3000;
+            white-space: nowrap;
+        }
+
+        .sync-loader {
+            display: none; width: 16px; height: 16px; border: 2px solid #ddd;
+            border-top: 2px solid var(--primary); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin-right: 10px;
+        }
+        @keyframes spin { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
