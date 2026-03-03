@@ -317,7 +317,7 @@
         
         const allChip = document.createElement('div');
         allChip.className = `folder-chip ${activeFolder === 'All' ? 'active' : ''}`;
-        allChip.innerText = `الكل (${totalCount})`;
+        allChip.innerHTML = `<span>الكل</span> <span dir="ltr">(${totalCount})</span>`;
         allChip.onclick = () => { activeFolder = 'All'; renderVault(); renderFoldersBar(); };
         bar.appendChild(allChip);
 
@@ -326,7 +326,7 @@
             
             const chip = document.createElement('div');
             chip.className = `folder-chip ${activeFolder === f ? 'active' : ''}`;
-            chip.innerText = `${f} (${folderCount})`;
+            chip.innerHTML = `<span>${f}</span> <span dir="ltr">(${folderCount})</span>`;
             chip.onclick = () => { activeFolder = f; renderVault(); renderFoldersBar(); };
             
             chip.onmousedown = () => startFolderPress(f);
@@ -414,6 +414,7 @@
              triggerAutoSave();
              toggleSelectionMode(); 
              renderVault();
+             renderFoldersBar();
              showToast("تم الحذف");
         });
     }
@@ -599,6 +600,7 @@
                     accounts = accounts.filter(a => a.id !== idToDelete);
                     triggerAutoSave();
                     renderVault();
+                    renderFoldersBar();
                     showToast("تم الحذف");
                 });
             } else if (action === 'edit') {
