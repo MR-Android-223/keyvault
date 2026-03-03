@@ -14,13 +14,13 @@
 
     // --- Firebase Configuration ---
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyCMLMIUht6Az9R1-kiJeNGVN0BeL1N5rG4",
+        authDomain: "wassouf1997.firebaseapp.com",
+        databaseURL: "https://wassouf1997-default-rtdb.firebaseio.com",
+        projectId: "wassouf1997",
+        storageBucket: "wassouf1997.firebasestorage.app",
+        messagingSenderId: "979816526016",
+        appId: "1:979816526016:web:a0538d0d686bf2ff123d25"
     };
 
     firebase.initializeApp(firebaseConfig);
