@@ -7,6 +7,8 @@
             --gray-border: #e5e7eb;
             --danger: #ef4444;
             --header-height: 70px;
+            
+            /* ألوان جوجل */
             --google-blue: #1a73e8;
         }
 
@@ -21,12 +23,11 @@
             padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
         }
 
-        /* --- تصميم صفحة الدخول --- */
+        /* --- تصميم صفحة الدخول (مخفية) --- */
         #loginOverlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background-color: #f0f2f5;
-            z-index: 6000; display: none; /* مخفي افتراضياً ويظهر بالجافاسكريبت إذا لزم الأمر */
-            flex-direction: column;
+            z-index: 6000; display: none; flex-direction: column;
             align-items: center; justify-content: center;
             padding: 20px;
         }
