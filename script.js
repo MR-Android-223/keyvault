@@ -12,44 +12,47 @@
     let folderRenameTarget = null;
     let vaultPressTimer = null;
 
-    // --- Google API Config ---
-    const GOOGLE_CLIENT_ID = '979816526016-ukb9vqtb6u2hlutombpf8rumbjr3o2ua.apps.googleusercontent.com';
-    const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile';
-    const FILENAME = 'secret_vault_unified.json';
-    let tokenClient;
-    let gAccessToken = localStorage.getItem('gAccessToken');
+    // --- Firebase Configuration ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyCMLMIUht6Az9R1-kiJeNGVN0BeL1N5rG4",
+        authDomain: "wassouf1997.firebaseapp.com",
+        databaseURL: "https://wassouf1997-default-rtdb.firebaseio.com",
+        projectId: "wassouf1997",
+        storageBucket: "wassouf1997.firebasestorage.app",
+        messagingSenderId: "979816526016",
+        appId: "1:979816526016:web:a0538d0d686bf2ff123d25"
+    };
 
-    // --- Auth Functions ---
-    function initGoogleLib() {
-        if(window.google) {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID, scope: SCOPES,
-                callback: (resp) => {
-                    if (resp.access_token) {
-                        gAccessToken = resp.access_token;
-                        localStorage.setItem('gAccessToken', gAccessToken);
-                        document.getElementById('loginOverlay').style.display = 'none';
-                        showToast("تم الدخول ✅");
-                        checkGoogleLoginState();
-                        fetchUserInfo();
-                        forceSyncFromCloud(); // جلب تلقائي بعد تسجيل الدخول
-                    }
-                }
-            });
-            // Try silent login
-            if(gAccessToken) {
-                checkGoogleLoginState();
-                fetchUserInfo();
-                forceSyncFromCloud(); // جلب تلقائي إذا كان التوكن موجود
-            } else if(tokenClient) {
-                tokenClient.requestAccessToken({prompt: 'none'});
-            }
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+    let currentUser = null;
+
+    // --- Auth & Realtime Sync Functions ---
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            currentUser = user;
+            document.getElementById('loginOverlay').style.display = 'none';
+            checkGoogleLoginState();
+            updateLogoutIcon(user.photoURL);
+            startRealtimeSync();
+        } else {
+            currentUser = null;
+            document.getElementById('loginOverlay').style.display = 'flex';
+            checkGoogleLoginState();
         }
-    }
+    });
 
     function startGoogleLogin() {
         document.getElementById('loginStatus').style.display = 'block';
-        if(tokenClient) tokenClient.requestAccessToken();
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).then(() => {
+            showToast("تم الدخول ✅");
+        }).catch((error) => {
+            console.error(error);
+            showToast("فشل الدخول ❌");
+            document.getElementById('loginStatus').style.display = 'none';
+        });
     }
 
     function openLoginOverlay() {
@@ -58,168 +61,73 @@
     }
 
     function checkGoogleLoginState() {
-        if(gAccessToken) {
+        if(currentUser) {
             document.getElementById('googleLoginBtnArea').style.display = 'none';
-            document.getElementById('googleSyncActions').style.display = 'block';
             document.getElementById('googleLogoutContainer').style.display = 'block';
         } else {
             document.getElementById('googleLoginBtnArea').style.display = 'block';
-            document.getElementById('googleSyncActions').style.display = 'none';
             document.getElementById('googleLogoutContainer').style.display = 'none';
         }
     }
 
-    async function fetchUserInfo() {
-        if(!gAccessToken) return;
-        const localPic = localStorage.getItem('userPhotoVault');
-        if(localPic) updateLogoutIcon(localPic);
-
-        try {
-            let res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { 'Authorization': `Bearer ${gAccessToken}` }
-            });
-            if(res.ok) {
-                let data = await res.json();
-                if(data.picture) {
-                    localStorage.setItem('userPhotoVault', data.picture);
-                    updateLogoutIcon(data.picture);
-                }
-            }
-        } catch(e) {}
-    }
-
     function updateLogoutIcon(url) {
         const area = document.getElementById('googleLogoutIcon');
-        if(area) area.innerHTML = `<img src="${url}" class="user-profile-img" alt="User">`;
+        if(area && url) area.innerHTML = `<img src="${url}" class="user-profile-img" alt="User">`;
     }
 
     function handleGoogleLogout() {
         document.getElementById('mainMenu').style.display = 'none';
-        customConfirm("هل تريد تسجيل الخروج من Google؟", () => {
-            localStorage.removeItem('gAccessToken');
-            localStorage.removeItem('userPhotoVault');
-            gAccessToken = null;
-            accounts = []; // مسح البيانات من الذاكرة
-            folders = ["عام", "فيسبوك", "جوجل"];
-            document.getElementById('googleLogoutIcon').innerText = '🚪';
-            checkGoogleLoginState();
-            renderVault();
-            renderFoldersBar();
-            showToast("تم تسجيل الخروج ومسح البيانات المؤقتة");
+        customConfirm("هل تريد تسجيل الخروج؟", () => {
+            auth.signOut().then(() => {
+                accounts = []; 
+                folders = ["عام", "فيسبوك", "جوجل"];
+                document.getElementById('googleLogoutIcon').innerText = '🚪';
+                renderVault();
+                renderFoldersBar();
+                showToast("تم تسجيل الخروج");
+            });
         });
     }
 
-    // --- SYNC ENGINE (Cloud Only) ---
-    
-    function setSyncLoader(show) { document.getElementById('syncLoader').style.display = show ? 'inline-block' : 'none'; }
-
-    async function forceUploadToDrive() {
-        if(!gAccessToken) { showToast("غير مسجل دخول ⚠️"); return; }
-        setSyncLoader(true);
-
-        try {
-            // Check for existing file
-            const q = `name = '${FILENAME}' and 'appDataFolder' in parents and trashed = false`;
-            const searchResp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=appDataFolder`, {
-                headers: { 'Authorization': `Bearer ${gAccessToken}` }
-            });
-
-            if(searchResp.status === 401) {
-                localStorage.removeItem('gAccessToken'); gAccessToken=null; 
-                tokenClient.requestAccessToken(); return;
-            }
-
-            const data = await searchResp.json();
-            let fileId = null;
-            if(data.files && data.files.length > 0) fileId = data.files[0].id;
-
-            // Prepare Data Package
-            const payload = { 
-                accounts: accounts, 
-                folders: folders,
-                appPass: localStorage.getItem('appPass'),
-                vaultPass: localStorage.getItem('vaultPass') 
-            };
-            const fileBlob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-
-            if(fileId) {
-                // Update existing file
-                await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
-                    body: fileBlob
-                });
+    function startRealtimeSync() {
+        if (!currentUser) return;
+        document.getElementById('syncLoader').style.display = 'inline-block';
+        const userRef = db.ref('users/' + currentUser.uid);
+        
+        userRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                accounts = data.accounts || [];
+                folders = data.folders || ["عام", "فيسبوك", "جوجل"];
             } else {
-                // Create new file
-                const metadata = { name: FILENAME, mimeType: 'application/json', parents: ['appDataFolder'] };
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                form.append('file', fileBlob);
-                await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${gAccessToken}` },
-                    body: form
-                });
+                accounts = [];
+                folders = ["عام", "فيسبوك", "جوجل"];
             }
-            showToast("تم الحفظ في السحابة ✅");
-        } catch(e) {
-            console.error(e);
-            showToast("فشل الرفع للسحابة ❌");
-        }
-        setSyncLoader(false);
+            renderVault();
+            renderFoldersBar();
+            document.getElementById('syncLoader').style.display = 'none';
+        });
     }
 
-    async function forceSyncFromCloud(isManual = false) {
-        if (isManual) document.getElementById('mainMenu').style.display = 'none';
-        if(!gAccessToken) { if(isManual) showToast("غير مسجل دخول ⚠️"); return; }
-        setSyncLoader(true);
-        if(isManual) showToast("جاري جلب البيانات...");
-
+    async function syncToFirebase() {
+        if (!currentUser) return;
+        document.getElementById('syncLoader').style.display = 'inline-block';
         try {
-            const q = `name = '${FILENAME}' and 'appDataFolder' in parents and trashed = false`;
-            const searchResp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=appDataFolder`, {
-                headers: { 'Authorization': `Bearer ${gAccessToken}` }
+            await db.ref('users/' + currentUser.uid).set({
+                accounts: accounts,
+                folders: folders
             });
-            
-            const data = await searchResp.json();
-            if(data.files && data.files.length > 0) {
-                const fileId = data.files[0].id;
-                const fileResp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-                    headers: { 'Authorization': `Bearer ${gAccessToken}` }
-                });
-                const cloudContent = await fileResp.json();
-                
-                if(cloudContent) {
-                    if(cloudContent.accounts) accounts = cloudContent.accounts;
-                    if(cloudContent.folders) folders = cloudContent.folders;
-                    
-                    if(cloudContent.appPass) localStorage.setItem('appPass', cloudContent.appPass);
-                    else localStorage.removeItem('appPass');
-
-                    if(cloudContent.vaultPass) localStorage.setItem('vaultPass', cloudContent.vaultPass);
-                    else localStorage.removeItem('vaultPass');
-
-                    renderVault();
-                    renderFoldersBar();
-                    if(isManual) showToast("تم استعادة البيانات ✅");
-                }
-            } else {
-                if(isManual) showToast("لا توجد بيانات سحابية ℹ️");
-            }
-        } catch(e) {
-            console.error(e);
-            if(isManual) showToast("فشل الجلب ❌");
+        } catch (error) {
+            console.error(error);
+            showToast("حدث خطأ أثناء المزامنة");
         }
-        setSyncLoader(false);
+        document.getElementById('syncLoader').style.display = 'none';
     }
 
     // --- FILE EXPORT/IMPORT ---
     function exportDataAuto() {
         document.getElementById('mainMenu').style.display = 'none';
-        const dataToSave = {
-            accounts: accounts,
-            folders: folders
-        };
+        const dataToSave = { accounts: accounts, folders: folders };
         const blob = new Blob([JSON.stringify(dataToSave)], {type: "application/json"});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -229,10 +137,7 @@
 
     function shareBackupToApp() {
         document.getElementById('mainMenu').style.display = 'none';
-        const dataToShare = {
-            accounts: accounts,
-            folders: folders
-        };
+        const dataToShare = { accounts: accounts, folders: folders };
         const jsonString = JSON.stringify(dataToShare);
         
         if (window.AppInventor && window.AppInventor.setWebViewString) {
@@ -255,15 +160,13 @@
                 const clean = newAccounts.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
                 accounts = [...accounts, ...clean];
                 
-                newFolders.forEach(f => {
-                    if(!folders.includes(f)) folders.push(f);
+                newFolders.forEach(folder => {
+                    if(!folders.includes(folder)) folders.push(folder);
                 });
 
-                renderVault();
-                renderFoldersBar();
-                showToast('تم استعادة البيانات.. جاري الرفع للسحابة ⏳');
-                await forceUploadToDrive();
-            } catch(e){
+                showToast('تم استعادة البيانات.. جاري المزامنة ⏳');
+                await syncToFirebase();
+            } catch(error){
                 showToast('ملف غير صالح ❌');
             }
         };
@@ -338,8 +241,8 @@
     }
 
     function prepareSaveAccount() {
-        if(!gAccessToken) {
-            showToast("يجب تسجيل الدخول أولاً للمزامنة ⚠️");
+        if(!currentUser) {
+            showToast("يجب تسجيل الدخول أولاً ⚠️");
             return;
         }
         const email = document.getElementById('emailInput').value;
@@ -358,10 +261,8 @@
 
         document.getElementById('emailInput').value = '';
         document.getElementById('passInput').value = '';
-        renderVault();
-        renderFoldersBar();
-        showToast("جاري الرفع للسحابة...");
-        await forceUploadToDrive();
+        await syncToFirebase();
+        showToast("تم الحفظ ✅");
     }
 
     // --- Rendering ---
@@ -469,10 +370,8 @@
         customConfirm(`هل أنت متأكد من حذف ${selectedIds.size} عنصر؟`, async () => {
              accounts = accounts.filter(acc => !selectedIds.has(acc.id));
              toggleSelectionMode(); 
-             renderVault();
-             renderFoldersBar();
-             showToast("جاري الرفع للسحابة...");
-             await forceUploadToDrive();
+             await syncToFirebase();
+             showToast("تم الحذف ✅");
         });
     }
 
@@ -537,9 +436,9 @@
 
     async function executeMove(targetFolder) {
         accounts.forEach(acc => { if(selectedIds.has(acc.id)) acc.folder = targetFolder; });
-        toggleSelectionMode(); activeFolder = targetFolder; renderFoldersBar(); renderVault();
-        showToast("جاري التحديث السحابي...");
-        await forceUploadToDrive();
+        toggleSelectionMode(); activeFolder = targetFolder;
+        await syncToFirebase();
+        showToast("تم النقل ✅");
     }
 
     function openAddFolderModal(renameTarget = null) {
@@ -561,9 +460,8 @@
         } else {
             if(!folders.includes(name)) folders.push(name);
         }
-        goBack(); renderFoldersBar(); renderVault();
-        showToast("جاري التحديث السحابي...");
-        await forceUploadToDrive();
+        goBack();
+        await syncToFirebase();
     }
 
     function startFolderPress(f) {
@@ -630,7 +528,7 @@
              accounts = newAccounts;
         }
 
-        await forceUploadToDrive();
+        await syncToFirebase();
     }
 
     // --- Context Menu ---
@@ -656,19 +554,15 @@
                 customConfirm("حذف نهائي؟", async () => {
                     const idToDelete = currentCtxId; 
                     accounts = accounts.filter(a => a.id !== idToDelete);
-                    renderVault();
-                    renderFoldersBar();
-                    showToast("جاري الحذف السحابي...");
-                    await forceUploadToDrive();
+                    await syncToFirebase();
+                    showToast("تم الحذف");
                 });
             } else if (action === 'edit') {
                 document.getElementById('emailInput').value = acc.email;
                 document.getElementById('passInput').value = acc.pass;
                 accounts = accounts.filter(a => a.id !== currentCtxId);
-                renderVault(); 
                 if(document.getElementById('vaultPage').style.display==='flex') goBack();
-                showToast("جاري التحضير للتعديل...");
-                await forceUploadToDrive();
+                await syncToFirebase();
             }
         }, 200);
     }
@@ -681,8 +575,6 @@
         
         document.getElementById('lockMenuText').innerText = appPass ? "إلغاء قفل التطبيق" : "تعيين قفل للتطبيق";
         
-        checkGoogleLoginState();
-
         if (m.style.display === 'flex') {
             m.style.display = 'none';
         } else {
@@ -694,24 +586,22 @@
         }
     }
 
-    async function handleAppLockSettings() {
+    function handleAppLockSettings() {
         document.getElementById('mainMenu').style.display = 'none';
         const appPass = localStorage.getItem('appPass');
         if(appPass) {
-            openPasswordModal("أدخل الرمز الحالي لإزالته", async (v) => {
+            openPasswordModal("أدخل الرمز الحالي لإزالته", (v) => {
                 if(v === appPass) { 
                     localStorage.removeItem('appPass'); 
-                    showToast("جاري التحديث السحابي...");
-                    await forceUploadToDrive();
+                    showToast("تم إزالة القفل");
                 }
                 else showToast("خطأ في الرمز");
             });
         } else {
-            openPasswordModal("تعيين رمز جديد", async (v) => { 
+            openPasswordModal("تعيين رمز جديد", (v) => { 
                 if(v) { 
                     localStorage.setItem('appPass', v); 
-                    showToast("جاري التحديث السحابي...");
-                    await forceUploadToDrive();
+                    showToast("تم القفل");
                 } 
             });
         }
@@ -722,10 +612,8 @@
         customConfirm("حذف كل البيانات سحابياً؟", async () => {
             accounts = []; 
             folders = ["عام"];
-            renderVault();
-            renderFoldersBar();
-            showToast("جاري مسح السحابة...");
-            await forceUploadToDrive();
+            await syncToFirebase();
+            showToast("تم الحذف بالكامل");
         });
     }
 
@@ -754,18 +642,16 @@
     function cancelVaultPress() { clearTimeout(vaultPressTimer); }
     function handleVaultLongPress() {
         const vp = localStorage.getItem('vaultPass');
-        if(vp) openPasswordModal("إزالة قفل الخزنة", async v => { 
+        if(vp) openPasswordModal("إزالة قفل الخزنة", v => { 
             if(v===vp){ 
                 localStorage.removeItem('vaultPass'); 
-                showToast("جاري التحديث السحابي...");
-                await forceUploadToDrive(); 
+                showToast("تم الإلغاء");
             } else showToast("خطأ"); 
         });
-        else openPasswordModal("قفل الخزنة", async v => { 
+        else openPasswordModal("قفل الخزنة", v => { 
             if(v){ 
                 localStorage.setItem('vaultPass', v); 
-                showToast("جاري التحديث السحابي...");
-                await forceUploadToDrive();
+                showToast("تم القفل");
             } 
         });
     }
@@ -776,7 +662,7 @@
         else openVault();
     }
     function openVault() {
-        if(!gAccessToken && accounts.length === 0) {
+        if(!currentUser && accounts.length === 0) {
             showToast("يرجى تسجيل الدخول لجلب البيانات");
             return;
         }
@@ -805,9 +691,7 @@
             const clean = raw.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
             accounts = [...accounts, ...clean];
             goBack(); showToast(`تم استيراد ${clean.length} عنصر، جاري الرفع...`); 
-            renderVault();
-            renderFoldersBar();
-            await forceUploadToDrive();
+            await syncToFirebase();
         } catch(e) { showToast("كود غير صالح ❌"); }
     }
     function pasteFromClipboard() { navigator.clipboard.readText().then(t => document.getElementById('importText').value = t); }
