@@ -1,7 +1,8 @@
-// --- Data & State ---
-    let accounts = [];
-    let folders = ["عام", "فيسبوك", "جوجل"];
-
+// --- Data & State (RAM Only) ---
+    // لا يتم تحميل أي شيء من LocalStorage يتعلق بالبيانات
+    let accounts = []; 
+    let folders = ["عام"];
+    
     let longPressTimer, isLongPress = false;
     let currentCtxId = null, currentCtxType = null;
     let pendingCallback = null;
@@ -11,171 +12,213 @@
     let isMoveAction = false; 
     let folderRenameTarget = null;
     let vaultPressTimer = null;
+    let saveTimeout = null;
 
-    // --- Firebase Configuration ---
-    const firebaseConfig = {
-        apiKey: "AIzaSyCMLMIUht6Az9R1-kiJeNGVN0BeL1N5rG4",
-        authDomain: "wassouf1997.firebaseapp.com",
-        databaseURL: "https://wassouf1997-default-rtdb.firebaseio.com",
-        projectId: "wassouf1997",
-        storageBucket: "wassouf1997.firebasestorage.app",
-        messagingSenderId: "979816526016",
-        appId: "1:979816526016:web:a0538d0d686bf2ff123d25"
-    };
+    // --- Google API Config ---
+    const GOOGLE_CLIENT_ID = '979816526016-ukb9vqtb6u2hlutombpf8rumbjr3o2ua.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile';
+    const FILENAME = 'secret_vault_unified.json';
+    let tokenClient;
+    // نحتفظ برمز الدخول لتجنب ظهور شاشة الدخول عند التحديث
+    let gAccessToken = localStorage.getItem('gAccessToken');
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-    let currentUser = null;
-
-    // --- Auth & Realtime Sync Functions ---
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            currentUser = user;
-            document.getElementById('loginOverlay').style.display = 'none';
-            checkGoogleLoginState();
-            updateLogoutIcon(user.photoURL);
-            startRealtimeSync();
-        } else {
-            currentUser = null;
-            document.getElementById('loginOverlay').style.display = 'flex';
-            checkGoogleLoginState();
+    // --- Auth Functions ---
+    function initGoogleLib() {
+        if(window.google) {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID, scope: SCOPES,
+                callback: (resp) => {
+                    if (resp.access_token) {
+                        gAccessToken = resp.access_token;
+                        localStorage.setItem('gAccessToken', gAccessToken);
+                        document.getElementById('loginOverlay').style.display = 'none';
+                        showToast("تم الدخول ✅");
+                        checkGoogleLoginState();
+                        fetchUserInfo();
+                        forceSyncFromCloud(true); // جلب تلقائي عند الدخول
+                    }
+                }
+            });
+            
+            // عند بدء التشغيل:
+            if(gAccessToken) {
+                // إذا كان الرمز موجوداً، اخفِ شاشة الدخول فوراً وابدأ المزامنة
+                document.getElementById('loginOverlay').style.display = 'none';
+                checkGoogleLoginState();
+                fetchUserInfo();
+                forceSyncFromCloud(true);
+            } else {
+                // إذا لم يكن مسجلاً، أظهر شاشة الدخول
+                document.getElementById('loginOverlay').style.display = 'flex';
+            }
         }
-    });
+    }
 
     function startGoogleLogin() {
         document.getElementById('loginStatus').style.display = 'block';
-        const provider = new firebase.auth.GoogleAuthProvider();
-        
-        auth.signInWithPopup(provider).then((result) => {
-            if (result && result.user) {
-                showToast("تم الدخول ✅");
-            }
-        }).catch((error) => {
-            console.error(error);
-            showToast("فشل الدخول ❌");
-            document.getElementById('loginStatus').style.display = 'none';
-        });
-    }
-
-    function openLoginOverlay() {
-        document.getElementById('mainMenu').style.display = 'none';
-        document.getElementById('loginOverlay').style.display = 'flex';
+        if(tokenClient) tokenClient.requestAccessToken();
     }
 
     function checkGoogleLoginState() {
-        if(currentUser) {
-            document.getElementById('googleLoginBtnArea').style.display = 'none';
-            document.getElementById('googleLogoutContainer').style.display = 'block';
-        } else {
-            document.getElementById('googleLoginBtnArea').style.display = 'block';
-            document.getElementById('googleLogoutContainer').style.display = 'none';
-        }
+        // لا حاجة لتغيير الأزرار، فالتطبيق لا يعمل بدون دخول
+    }
+
+    async function fetchUserInfo() {
+        if(!gAccessToken) return;
+        const localPic = localStorage.getItem('userPhotoVault');
+        if(localPic) updateLogoutIcon(localPic);
+
+        try {
+            let res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { 'Authorization': `Bearer ${gAccessToken}` }
+            });
+            if(res.ok) {
+                let data = await res.json();
+                if(data.picture) {
+                    localStorage.setItem('userPhotoVault', data.picture);
+                    updateLogoutIcon(data.picture);
+                }
+            }
+        } catch(e) {}
     }
 
     function updateLogoutIcon(url) {
         const area = document.getElementById('googleLogoutIcon');
-        if(area && url) area.innerHTML = `<img src="${url}" class="user-profile-img" alt="User">`;
+        if(area) area.innerHTML = `<img src="${url}" class="user-profile-img" alt="User">`;
     }
 
     function handleGoogleLogout() {
         document.getElementById('mainMenu').style.display = 'none';
-        customConfirm("هل تريد تسجيل الخروج؟", () => {
-            auth.signOut().then(() => {
-                accounts = []; 
-                folders = ["عام", "فيسبوك", "جوجل"];
-                document.getElementById('googleLogoutIcon').innerText = '🚪';
-                renderVault();
-                renderFoldersBar();
-                showToast("تم تسجيل الخروج");
-            });
-        });
-    }
-
-    function startRealtimeSync() {
-        if (!currentUser) return;
-        document.getElementById('syncLoader').style.display = 'inline-block';
-        const userRef = db.ref('users/' + currentUser.uid);
-        
-        userRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                accounts = data.accounts || [];
-                folders = data.folders || ["عام", "فيسبوك", "جوجل"];
-            } else {
-                accounts = [];
-                folders = ["عام", "فيسبوك", "جوجل"];
-            }
+        customConfirm("سيتم مسح البيانات من الشاشة (تبقى في السحابة). خروج؟", () => {
+            localStorage.removeItem('gAccessToken');
+            localStorage.removeItem('userPhotoVault');
+            localStorage.removeItem('appPass'); // Optional: Clear preferences
+            localStorage.removeItem('vaultPass');
+            gAccessToken = null;
+            accounts = [];
+            folders = ["عام"];
+            document.getElementById('loginOverlay').style.display = 'flex';
             renderVault();
-            renderFoldersBar();
-            document.getElementById('syncLoader').style.display = 'none';
+            showToast("تم تسجيل الخروج");
         });
     }
 
-    async function syncToFirebase() {
-        if (!currentUser) return;
-        document.getElementById('syncLoader').style.display = 'inline-block';
+    // --- SYNC ENGINE ---
+    
+    function setSyncLoader(show) { document.getElementById('syncLoader').style.display = show ? 'inline-block' : 'none'; }
+
+    function triggerAutoSave() {
+        if(saveTimeout) clearTimeout(saveTimeout);
+        setSyncLoader(true); 
+        // تأخير بسيط لتجميع التعديلات السريعة
+        saveTimeout = setTimeout(() => {
+            forceUploadToDrive(true);
+        }, 1500);
+    }
+
+    async function forceUploadToDrive(silent = false) {
+        if(!gAccessToken) return;
+        if(!silent) {
+            document.getElementById('mainMenu').style.display = 'none';
+            showToast("جاري الرفع...");
+        }
+        setSyncLoader(true);
+
         try {
-            await db.ref('users/' + currentUser.uid).set({
-                accounts: accounts,
-                folders: folders
+            const q = `name = '${FILENAME}' and 'appDataFolder' in parents and trashed = false`;
+            const searchResp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=appDataFolder`, {
+                headers: { 'Authorization': `Bearer ${gAccessToken}` }
             });
-        } catch (error) {
-            console.error(error);
-            showToast("حدث خطأ أثناء المزامنة");
-        }
-        document.getElementById('syncLoader').style.display = 'none';
-    }
 
-    // --- FILE EXPORT/IMPORT ---
-    function exportDataAuto() {
-        document.getElementById('mainMenu').style.display = 'none';
-        const dataToSave = { accounts: accounts, folders: folders };
-        const blob = new Blob([JSON.stringify(dataToSave)], {type: "application/json"});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = "secrets_vault_backup.json";
-        a.click();
-    }
-
-    function shareBackupToApp() {
-        document.getElementById('mainMenu').style.display = 'none';
-        const dataToShare = { accounts: accounts, folders: folders };
-        const jsonString = JSON.stringify(dataToShare);
-        
-        if (window.AppInventor && window.AppInventor.setWebViewString) {
-            window.AppInventor.setWebViewString("SAVE_FILE|||" + jsonString);
-        } else {
-            console.log("SAVE_FILE|||" + jsonString);
-            showToast("هذه الميزة تعمل فقط على الهاتف");
-        }
-    }
-
-    async function importDataWrapper(e) {
-        document.getElementById('mainMenu').style.display = 'none';
-        const reader = new FileReader();
-        reader.onload = async (f) => {
-            try {
-                const imported = JSON.parse(f.target.result);
-                const newAccounts = Array.isArray(imported) ? imported : (imported.accounts || []);
-                const newFolders = imported.folders || ["عام"];
-                
-                const clean = newAccounts.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
-                accounts = [...accounts, ...clean];
-                
-                newFolders.forEach(folder => {
-                    if(!folders.includes(folder)) folders.push(folder);
-                });
-
-                showToast('تم استعادة البيانات.. جاري المزامنة ⏳');
-                await syncToFirebase();
-            } catch(error){
-                showToast('ملف غير صالح ❌');
+            if(searchResp.status === 401) {
+                // إذا انتهت صلاحية الجلسة
+                localStorage.removeItem('gAccessToken'); gAccessToken=null; 
+                document.getElementById('loginOverlay').style.display = 'flex';
+                return;
             }
-        };
-        if(e.target.files.length > 0) {
-            reader.readAsText(e.target.files[0]);
+
+            const data = await searchResp.json();
+            let fileId = null;
+            if(data.files && data.files.length > 0) fileId = data.files[0].id;
+
+            const payload = { 
+                accounts: accounts, 
+                folders: folders,
+                appPass: localStorage.getItem('appPass'),
+                vaultPass: localStorage.getItem('vaultPass') 
+            };
+            const fileBlob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+
+            if(fileId) {
+                await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
+                    body: fileBlob
+                });
+            } else {
+                const metadata = { name: FILENAME, mimeType: 'application/json', parents: ['appDataFolder'] };
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                form.append('file', fileBlob);
+                await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${gAccessToken}` },
+                    body: form
+                });
+            }
+            if(!silent) showToast("تم الحفظ سحابياً ✅");
+        } catch(e) {
+            console.error(e);
+            if(!silent) showToast("فشل الرفع ❌");
         }
+        setSyncLoader(false);
+    }
+
+    async function forceSyncFromCloud(silent = false) {
+        if(!gAccessToken) return;
+        if(!silent) document.getElementById('mainMenu').style.display = 'none';
+        setSyncLoader(true);
+        if(!silent) showToast("جاري جلب البيانات...");
+
+        try {
+            const q = `name = '${FILENAME}' and 'appDataFolder' in parents and trashed = false`;
+            const searchResp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=appDataFolder`, {
+                headers: { 'Authorization': `Bearer ${gAccessToken}` }
+            });
+            
+            if(searchResp.status === 401) {
+                localStorage.removeItem('gAccessToken'); gAccessToken=null; 
+                document.getElementById('loginOverlay').style.display = 'flex';
+                return;
+            }
+
+            const data = await searchResp.json();
+            if(data.files && data.files.length > 0) {
+                const fileId = data.files[0].id;
+                const fileResp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    headers: { 'Authorization': `Bearer ${gAccessToken}` }
+                });
+                const cloudContent = await fileResp.json();
+                
+                if(cloudContent) {
+                    if(cloudContent.accounts) accounts = cloudContent.accounts;
+                    if(cloudContent.folders) folders = cloudContent.folders;
+                    
+                    if(cloudContent.appPass) localStorage.setItem('appPass', cloudContent.appPass);
+                    if(cloudContent.vaultPass) localStorage.setItem('vaultPass', cloudContent.vaultPass);
+
+                    renderVault();
+                    renderFoldersBar();
+                    if(!silent) showToast("تم التحديث من السحابة ✅");
+                }
+            } else {
+                if(!silent) showToast("الخزنة السحابية فارغة ℹ️");
+            }
+        } catch(e) {
+            console.error(e);
+            if(!silent) showToast("فشل الجلب ❌");
+        }
+        setSyncLoader(false);
     }
 
     // --- Helper Functions ---
@@ -221,8 +264,9 @@
             }
         }
         
-        if(document.getElementById('loginOverlay').style.display === 'flex') {
-            document.getElementById('loginOverlay').style.display = 'none';
+        // منع إغلاق شاشة الدخول إذا لم يكن مسجلاً
+        if(!gAccessToken && document.getElementById('loginOverlay').style.display === 'flex') {
+             history.pushState(null, null, location.href);
         }
     };
 
@@ -244,10 +288,6 @@
     }
 
     function prepareSaveAccount() {
-        if(!currentUser) {
-            showToast("يجب تسجيل الدخول أولاً ⚠️");
-            return;
-        }
         const email = document.getElementById('emailInput').value;
         const pass = document.getElementById('passInput').value;
         if (!email) { showToast("أدخل البيانات أولاً ⚠️"); return; }
@@ -256,16 +296,18 @@
         openFolderSelectModal("حفظ في...");
     }
 
-    async function saveAccount(targetFolder) {
+    function saveAccount(targetFolder) {
         const email = document.getElementById('emailInput').value;
         const pass = document.getElementById('passInput').value;
         
         accounts.unshift({ id: Date.now(), email, pass, folder: targetFolder });
+        triggerAutoSave();
 
         document.getElementById('emailInput').value = '';
         document.getElementById('passInput').value = '';
-        await syncToFirebase();
-        showToast("تم الحفظ ✅");
+        showToast("جاري الحفظ...");
+        renderVault();
+        renderFoldersBar();
     }
 
     // --- Rendering ---
@@ -273,20 +315,20 @@
         const bar = document.getElementById('foldersBar');
         bar.innerHTML = '';
         
-        let totalCount = accounts.length;
+        const totalCount = accounts.length;
         
         const allChip = document.createElement('div');
         allChip.className = `folder-chip ${activeFolder === 'All' ? 'active' : ''}`;
-        allChip.innerText = 'الكل (' + totalCount + ')';
+        allChip.innerHTML = `<span>الكل</span> <span dir="ltr">(${totalCount})</span>`;
         allChip.onclick = () => { activeFolder = 'All'; renderVault(); renderFoldersBar(); };
         bar.appendChild(allChip);
 
         folders.forEach(f => {
-            let folderCount = accounts.filter(a => a.folder === f).length;
+            const folderCount = accounts.filter(acc => acc.folder === f).length;
             
             const chip = document.createElement('div');
             chip.className = `folder-chip ${activeFolder === f ? 'active' : ''}`;
-            chip.innerText = f + ' (' + folderCount + ')';
+            chip.innerHTML = `<span>${f}</span> <span dir="ltr">(${folderCount})</span>`;
             chip.onclick = () => { activeFolder = f; renderVault(); renderFoldersBar(); };
             
             chip.onmousedown = () => startFolderPress(f);
@@ -296,7 +338,6 @@
             chip.ontouchend = cancelPress;
             bar.appendChild(chip);
         });
-        
         const addBtn = document.createElement('div');
         addBtn.className = 'add-folder-btn';
         addBtn.innerText = '+';
@@ -370,11 +411,13 @@
 
     function deleteSelected() {
         if(selectedIds.size === 0) return;
-        customConfirm(`هل أنت متأكد من حذف ${selectedIds.size} عنصر؟`, async () => {
+        customConfirm(`هل أنت متأكد من حذف ${selectedIds.size} عنصر؟`, () => {
              accounts = accounts.filter(acc => !selectedIds.has(acc.id));
+             triggerAutoSave();
              toggleSelectionMode(); 
-             await syncToFirebase();
-             showToast("تم الحذف ✅");
+             renderVault();
+             renderFoldersBar();
+             showToast("تم الحذف");
         });
     }
 
@@ -437,10 +480,10 @@
         openFolderSelectModal("نقل " + selectedIds.size + " عنصر إلى:");
     }
 
-    async function executeMove(targetFolder) {
+    function executeMove(targetFolder) {
         accounts.forEach(acc => { if(selectedIds.has(acc.id)) acc.folder = targetFolder; });
-        toggleSelectionMode(); activeFolder = targetFolder;
-        await syncToFirebase();
+        triggerAutoSave();
+        toggleSelectionMode(); activeFolder = targetFolder; renderFoldersBar(); renderVault();
         showToast("تم النقل ✅");
     }
 
@@ -453,7 +496,7 @@
         input.focus();
     }
 
-    async function submitFolder() {
+    function submitFolder() {
         const name = document.getElementById('folderNameInput').value.trim();
         if(!name) return;
         if (folderRenameTarget) {
@@ -463,8 +506,8 @@
         } else {
             if(!folders.includes(name)) folders.push(name);
         }
-        goBack();
-        await syncToFirebase();
+        triggerAutoSave(); 
+        goBack(); renderFoldersBar(); renderVault();
     }
 
     function startFolderPress(f) {
@@ -498,15 +541,15 @@
         let nextSibling = siblings.find(sibling => clientY <= sibling.getBoundingClientRect().top + sibling.offsetHeight / 2);
         list.insertBefore(draggingItem, nextSibling);
     }
-    async function onDragEnd() {
+    function onDragEnd() {
         if(!draggingItem) return;
         draggingItem.classList.remove('dragging');
         draggingItem = null;
         document.removeEventListener('mouseup', onDragEnd);
         document.removeEventListener('touchend', onDragEnd);
-        await saveNewOrder();
+        saveNewOrder();
     }
-    async function saveNewOrder() {
+    function saveNewOrder() {
         const list = document.getElementById('vaultList');
         const cards = list.querySelectorAll('.account-card');
         
@@ -531,7 +574,7 @@
              accounts = newAccounts;
         }
 
-        await syncToFirebase();
+        triggerAutoSave();
     }
 
     // --- Context Menu ---
@@ -550,22 +593,25 @@
     function ctxAction(action) {
         goBack();
         const acc = accounts.find(a => a.id === currentCtxId);
-        setTimeout(async () => {
+        setTimeout(() => {
             if (!acc) return;
             if (action === 'copy') copyToClipboard(currentCtxType === 'email' ? acc.email : acc.pass);
             else if (action === 'delete') {
-                customConfirm("حذف نهائي؟", async () => {
+                customConfirm("حذف نهائي؟", () => {
                     const idToDelete = currentCtxId; 
                     accounts = accounts.filter(a => a.id !== idToDelete);
-                    await syncToFirebase();
+                    triggerAutoSave();
+                    renderVault();
+                    renderFoldersBar();
                     showToast("تم الحذف");
                 });
             } else if (action === 'edit') {
                 document.getElementById('emailInput').value = acc.email;
                 document.getElementById('passInput').value = acc.pass;
                 accounts = accounts.filter(a => a.id !== currentCtxId);
+                renderVault(); 
                 if(document.getElementById('vaultPage').style.display==='flex') goBack();
-                await syncToFirebase();
+                showToast("جاري التعديل... اضغط حفظ عند الانتهاء");
             }
         }, 200);
     }
@@ -596,7 +642,8 @@
             openPasswordModal("أدخل الرمز الحالي لإزالته", (v) => {
                 if(v === appPass) { 
                     localStorage.removeItem('appPass'); 
-                    showToast("تم إزالة القفل");
+                    showToast("تم إزالة القفل 🔓");
+                    triggerAutoSave();
                 }
                 else showToast("خطأ في الرمز");
             });
@@ -604,20 +651,47 @@
             openPasswordModal("تعيين رمز جديد", (v) => { 
                 if(v) { 
                     localStorage.setItem('appPass', v); 
-                    showToast("تم القفل");
+                    showToast("تم القفل 🔒");
+                    triggerAutoSave();
                 } 
             });
         }
     }
 
-    function confirmDeleteAll() {
+    // --- File Export/Import ---
+    function exportDataAuto() {
         document.getElementById('mainMenu').style.display = 'none';
-        customConfirm("حذف كل البيانات سحابياً؟", async () => {
-            accounts = []; 
-            folders = ["عام"];
-            await syncToFirebase();
-            showToast("تم الحذف بالكامل");
-        });
+        const dataToSave = { accounts: accounts, folders: folders };
+        const blob = new Blob([JSON.stringify(dataToSave)], {type: "application/json"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "secrets_vault_backup.json";
+        a.click();
+    }
+
+    function importDataWrapper(e) {
+        document.getElementById('mainMenu').style.display = 'none';
+        const reader = new FileReader();
+        reader.onload = (f) => {
+            try {
+                const imported = JSON.parse(f.target.result);
+                const newAccounts = Array.isArray(imported) ? imported : (imported.accounts || []);
+                const newFolders = imported.folders || ["عام"];
+                
+                const clean = newAccounts.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
+                accounts = [...accounts, ...clean];
+                
+                newFolders.forEach(f => { if(!folders.includes(f)) folders.push(f); });
+
+                triggerAutoSave();
+                renderVault();
+                renderFoldersBar();
+                showToast('تم استعادة البيانات بنجاح ✅');
+            } catch(e){
+                showToast('ملف غير صالح ❌');
+            }
+        };
+        if(e.target.files.length > 0) reader.readAsText(e.target.files[0]);
     }
 
     // --- Utils ---
@@ -648,13 +722,15 @@
         if(vp) openPasswordModal("إزالة قفل الخزنة", v => { 
             if(v===vp){ 
                 localStorage.removeItem('vaultPass'); 
-                showToast("تم الإلغاء");
+                showToast("تم الإلغاء"); 
+                triggerAutoSave();
             } else showToast("خطأ"); 
         });
         else openPasswordModal("قفل الخزنة", v => { 
             if(v){ 
                 localStorage.setItem('vaultPass', v); 
                 showToast("تم القفل");
+                triggerAutoSave();
             } 
         });
     }
@@ -665,10 +741,6 @@
         else openVault();
     }
     function openVault() {
-        if(!currentUser && accounts.length === 0) {
-            showToast("يرجى تسجيل الدخول لجلب البيانات");
-            return;
-        }
         pushHistory('vault');
         document.getElementById('vaultPage').style.display = 'flex';
         renderFoldersBar(); renderVault();
@@ -687,14 +759,14 @@
         document.getElementById('importText').value = '';
         showOverlay('importModal');
     }
-    async function performImport() {
+    function performImport() {
         try {
             const data = JSON.parse(document.getElementById('importText').value);
             const raw = Array.isArray(data) ? data : (data.accounts || []);
             const clean = raw.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
             accounts = [...accounts, ...clean];
-            goBack(); showToast(`تم استيراد ${clean.length} عنصر، جاري الرفع...`); 
-            await syncToFirebase();
+            triggerAutoSave();
+            goBack(); showToast(`تم استيراد ${clean.length} عنصر`); renderVault(); renderFoldersBar();
         } catch(e) { showToast("كود غير صالح ❌"); }
     }
     function pasteFromClipboard() { navigator.clipboard.readText().then(t => document.getElementById('importText').value = t); }
@@ -702,41 +774,3 @@
     function showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0',2000); }
 
     window.onclick = (e) => { if(!e.target.closest('.menu-btn')) document.getElementById('mainMenu').style.display = 'none'; }
-
-
-    // --- KODULAR BACK BUTTON INTEGRATION ---
-    function handleAndroidBack() {
-        const openOverlay = document.querySelector('.overlay.show');
-        if (openOverlay) {
-            goBack(); 
-            sendToKodular("STAY");
-            return;
-        }
-
-        if (document.getElementById('loginOverlay').style.display === 'flex') {
-            document.getElementById('loginOverlay').style.display = 'none';
-            sendToKodular("STAY");
-            return;
-        }
-
-        if (document.getElementById('vaultPage').style.display === 'flex') {
-            document.getElementById('vaultPage').style.display = 'none';
-            if(window.history.state) window.history.back();
-            sendToKodular("STAY");
-            return;
-        }
-
-        if (document.getElementById('mainMenu').style.display === 'flex') {
-            document.getElementById('mainMenu').style.display = 'none';
-            sendToKodular("STAY");
-            return;
-        }
-
-        sendToKodular("EXIT");
-    }
-
-    function sendToKodular(message) {
-        if (window.AppInventor && window.AppInventor.setWebViewString) {
-            window.AppInventor.setWebViewString(message);
-        }
-    }
