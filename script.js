@@ -46,8 +46,11 @@
     function startGoogleLogin() {
         document.getElementById('loginStatus').style.display = 'block';
         const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).then(() => {
-            showToast("تم الدخول ✅");
+        
+        auth.signInWithPopup(provider).then((result) => {
+            if (result && result.user) {
+                showToast("تم الدخول ✅");
+            }
         }).catch((error) => {
             console.error(error);
             showToast("فشل الدخول ❌");
