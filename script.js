@@ -1,4 +1,4 @@
-    // --- Data & State (RAM Only) ---
+// --- Data & State (RAM Only) ---
     // لا يتم تحميل أي شيء من LocalStorage يتعلق بالبيانات
     let accounts = []; 
     let folders = ["عام"];
@@ -208,6 +208,7 @@
                     if(cloudContent.vaultPass) localStorage.setItem('vaultPass', cloudContent.vaultPass);
 
                     renderVault();
+                    renderFoldersBar();
                     if(!silent) showToast("تم التحديث من السحابة ✅");
                 }
             } else {
@@ -306,6 +307,7 @@
         document.getElementById('passInput').value = '';
         showToast("جاري الحفظ...");
         renderVault();
+        renderFoldersBar();
     }
 
     // --- Rendering ---
@@ -683,6 +685,7 @@
 
                 triggerAutoSave();
                 renderVault();
+                renderFoldersBar();
                 showToast('تم استعادة البيانات بنجاح ✅');
             } catch(e){
                 showToast('ملف غير صالح ❌');
@@ -763,7 +766,7 @@
             const clean = raw.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
             accounts = [...accounts, ...clean];
             triggerAutoSave();
-            goBack(); showToast(`تم استيراد ${clean.length} عنصر`); renderVault();
+            goBack(); showToast(`تم استيراد ${clean.length} عنصر`); renderVault(); renderFoldersBar();
         } catch(e) { showToast("كود غير صالح ❌"); }
     }
     function pasteFromClipboard() { navigator.clipboard.readText().then(t => document.getElementById('importText').value = t); }
