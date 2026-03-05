@@ -610,23 +610,46 @@ function showBackupModal() {
 function copyBackup() {
     document.getElementById('backupText').select(); document.execCommand('copy'); showToast("تم النسخ");
 }
+
 function showImportModal() {
     document.getElementById('mainMenu').style.display = 'none';
     document.getElementById('importText').value = '';
     showOverlay('importModal');
 }
+
 function performImport() {
     try {
         const data = JSON.parse(document.getElementById('importText').value);
         const raw = Array.isArray(data) ? data : (data.accounts || []);
+        const newFolders = data.folders || ["عام"];
+        
         const clean = raw.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
         accounts = [...accounts, ...clean];
+        
+        newFolders.forEach(f => {
+            if(!folders.includes(f)) folders.push(f);
+        });
+
         saveToCloud();
-        goBack(); showToast("تم الاستيراد بنجاح");
-    } catch(e) { showToast("كود غير صالح"); }
+        goBack(); 
+        showToast("تم الاستيراد بنجاح");
+    } catch(e) { 
+        showToast("كود غير صالح"); 
+    }
 }
 
-function pasteFromClipboard() { navigator.clipboard.readText().then(t => document.getElementById('importText').value = t); }
+function pasteFromClipboard() {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText().then(t => {
+            document.getElementById('importText').value = t;
+        }).catch(err => {
+            showToast("نظام الحماية منع الزر، استخدم الضغطة المطولة للصق");
+        });
+    } else {
+        showToast("استخدم الضغطة المطولة للصق بهذا الجهاز");
+    }
+}
+
 function copyToClipboard(t) { navigator.clipboard.writeText(t).then(()=>showToast("تم النسخ")); }
 function showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.style.opacity='1'; setTimeout(()=>t.style.opacity='0',2000); }
 
