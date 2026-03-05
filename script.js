@@ -627,7 +627,7 @@ function performImport() {
         
         const data = JSON.parse(textValue);
         const rawAccounts = Array.isArray(data) ? data : (data.accounts || []);
-        const newFolders = data.folders || ["عام", "فيسبوك", "جوجل"];
+        const newFolders = data.folders || [];
         
         const cleanAccounts = rawAccounts.map(a => ({ 
             id: a.id || Date.now() + Math.random(), 
@@ -640,6 +640,12 @@ function performImport() {
         
         newFolders.forEach(f => {
             if(!folders.includes(f)) folders.push(f);
+        });
+
+        cleanAccounts.forEach(acc => {
+            if (acc.folder && !folders.includes(acc.folder)) {
+                folders.push(acc.folder);
+            }
         });
 
         saveToCloud();
