@@ -619,12 +619,24 @@ function showImportModal() {
 
 function performImport() {
     try {
-        const data = JSON.parse(document.getElementById('importText').value);
-        const raw = Array.isArray(data) ? data : (data.accounts || []);
-        const newFolders = data.folders || [];
+        const textValue = document.getElementById('importText').value.trim();
+        if (!textValue) {
+            showToast("الرجاء لصق الكود أولاً");
+            return;
+        }
         
-        const clean = raw.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
-        accounts = [...accounts, ...clean];
+        const data = JSON.parse(textValue);
+        const rawAccounts = Array.isArray(data) ? data : (data.accounts || []);
+        const newFolders = data.folders || ["عام", "فيسبوك", "جوجل"];
+        
+        const cleanAccounts = rawAccounts.map(a => ({ 
+            id: a.id || Date.now() + Math.random(), 
+            email: a.email || a.title || "مستورد", 
+            pass: a.pass || "...", 
+            folder: a.folder || "عام" 
+        }));
+        
+        accounts = [...accounts, ...cleanAccounts];
         
         newFolders.forEach(f => {
             if(!folders.includes(f)) folders.push(f);
@@ -633,9 +645,11 @@ function performImport() {
         saveToCloud();
         renderFoldersBar();
         renderVault();
+        document.getElementById('importText').value = '';
         goBack(); 
         showToast("تم الاستيراد بنجاح");
     } catch(e) { 
+        console.error(e);
         showToast("كود غير صالح"); 
     }
 }
