@@ -621,7 +621,7 @@ function performImport() {
     try {
         const data = JSON.parse(document.getElementById('importText').value);
         const raw = Array.isArray(data) ? data : (data.accounts || []);
-        const newFolders = data.folders || ["عام"];
+        const newFolders = data.folders || [];
         
         const clean = raw.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
         accounts = [...accounts, ...clean];
@@ -631,6 +631,8 @@ function performImport() {
         });
 
         saveToCloud();
+        renderFoldersBar();
+        renderVault();
         goBack(); 
         showToast("تم الاستيراد بنجاح");
     } catch(e) { 
