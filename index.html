@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <title>خزنة أسراري</title>
+    <meta name="description" content="خزنة أسراري - تطبيق آمن وذكي لحفظ وإدارة كلمات المرور والحسابات.">
+    <meta name="keywords" content="خزنة أسراري, حفظ كلمات المرور, مدير حسابات, أمان">
+    <meta property="og:title" content="خزنة أسراري">
+    <meta property="og:description" content="تطبيقك الآمن لإدارة حساباتك الشخصية.">
+    <meta property="og:image" content="icon.png">
+    
+    <link rel="icon" href="icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="loginOverlay">
+    <div class="login-card">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google" class="google-logo">
+        <h2 style="font-size:24px; font-weight:400; margin:0 0 8px 0; color:#202124;">تسجيل الدخول</h2>
+        <p style="color:#5f6368; margin-bottom:30px;">المتابعة إلى حسابك</p>
+
+        <a href="#" class="google-btn-auth" onclick="event.preventDefault(); startGoogleLogin()">
+            <div class="google-icon-wrapper">
+                <img class="google-icon" src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="G logo"/>
+            </div>
+            <span class="btn-text">المتابعة باستخدام حساب جوجل</span>
+        </a>
+
+        <div id="loginStatus" style="margin-top:20px; font-size:13px; color:var(--primary); display:none;">جاري الاتصال...</div>
+    </div>
+</div>
+
+<header>
+    <div class="menu-btn" onclick="safeToggleMenu(event)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+    </div>
+    
+    <h1>
+        خزنة أسراري 
+        <div id="syncLoader" class="sync-loader"></div>
+    </h1>
+    
+    <div style="width: 45px;"></div>
+    
+    <div id="mainMenu" class="main-menu" onclick="event.stopPropagation()">
+        
+        <div class="menu-item" onclick="toggleTheme()">
+            <span id="themeText">الوضع الليلي</span>
+            <span id="themeIcon" style="font-size: 18px;">🌙</span>
+        </div>
+
+        <div class="menu-item" id="menuSetPass" onclick="handleAppLockSettings()">
+            <span id="lockMenuText">إعدادات القفل</span>
+            <svg style="width:20px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        
+        <div class="menu-item" onclick="showBackupModal()">
+            <span>نسخ احتياطي كود</span>
+            <svg style="width:20px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path></svg>
+        </div>
+        
+        <div class="menu-item" onclick="shareBackupToApp()">
+            <span>مشاركة النص</span>
+            <svg style="width:20px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+        </div>
+        
+        <div class="menu-item" onclick="exportDataAuto()">
+            <span>تنزيل نسخة ملف</span>
+            <svg style="width:20px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        </div>
+
+        <div class="menu-item" onclick="showImportModal()">
+            <span>استيراد كود</span>
+            <svg style="width:20px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2-2H5a2 2 0 0 1-2-2v-4"></path></svg>
+        </div>
+
+        <div class="menu-item" onclick="document.getElementById('importFile').click()">
+            <span>استيراد ملف</span>
+            <svg style="width:20px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        </div>
+        <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importDataWrapper(event)">
+
+        <div class="menu-item delete-item" onclick="confirmDeleteAll()">
+            <span>حذف جميع البيانات</span>
+            <svg style="width:20px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </div>
+
+        <div id="googleLogoutContainer" style="border-top:1px solid #f0f0f0;">
+            <div class="menu-item delete-item" onclick="handleGoogleLogout()">
+                <span>تسجيل خروج</span>
+                <div id="googleLogoutIcon">🚪</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <div style="margin-top: 10px;"></div>
+    
+    <input type="text" id="emailInput" class="app-input" placeholder="البريد الإلكتروني / العنوان" autocomplete="off">
+    
+    <div style="width: 100%; position: relative;">
+        <input type="text" id="passInput" class="app-input" placeholder="كلمة المرور" autocomplete="off" oninput="checkPasswordStrength()">
+        <div id="strengthContainer" style="display: none; margin-top: -5px; padding: 0 5px;">
+            <div style="height: 4px; width: 100%; background: #e5e7eb; border-radius: 2px; overflow: hidden; margin-bottom: 5px;">
+                <div id="strengthBar" style="height: 100%; width: 0%; transition: 0.3s;"></div>
+            </div>
+            <span id="strengthText" style="font-size: 12px; font-weight: bold;"></span>
+        </div>
+    </div>
+    
+    <button class="btn btn-primary" onclick="prepareSaveAccount()">
+        <span>حفظ في الخزنة</span> 
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+    </button>
+
+    <button id="vaultBtn" class="btn btn-outline" 
+            onclick="openVaultCheck()" 
+            onmousedown="startVaultPress()" ontouchstart="startVaultPress()" 
+            onmouseup="cancelVaultPress()" ontouchend="cancelVaultPress()"
+            ontouchmove="cancelVaultPress()">
+        <span>فتح المحفوظات</span> 
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+    </button>
+</div>
+
+<div id="vaultPage">
+    <div class="vault-fixed-top">
+        <div class="vault-header">
+            <h2 class="vault-title">المحفوظات 📂</h2>
+            <div class="header-actions">
+                <button id="selectToggleBtn" class="icon-btn" onclick="toggleSelectionMode()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+                <button class="icon-btn back-btn" onclick="goBack()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 19 12 12 5"></polyline></svg>
+                </button>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 5px;">
+            <div style="position: relative; flex: 1;">
+                <svg style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #9ca3af;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="searchInput" style="width: 100%; padding: 15px 40px 15px 40px; border-radius: 15px; border: 1px solid var(--gray-border); background: var(--surface); color: var(--text); margin:0; font-family:'Tajawal'" placeholder="بحث سريع..." oninput="renderVault()">
+                <div id="clearSearchBtn" onclick="clearSearch()" style="display:none; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); cursor:pointer; color:var(--danger); font-weight:bold; font-size:18px;">✕</div>
+            </div>
+            <button class="icon-btn" onclick="openSortModal()" style="border-radius: 15px; width: 52px; flex-shrink: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h12M3 18h6"/></svg>
+            </button>
+        </div>
+
+        <div class="folders-bar" id="foldersBar">
+            <div class="add-folder-btn" onclick="openAddFolderModal()">+</div>
+        </div>
+    </div>
+
+    <div id="vaultList"></div>
+    
+    <div id="bottomBar" class="bottom-action-bar">
+        <span id="selectedCount" style="min-width: 60px;">محدد صفر</span>
+        
+        <button class="action-btn-small delete-btn-action" onclick="deleteSelected()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            حذف
+        </button>
+
+        <button class="action-btn-small" onclick="openMoveModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            نقل إلى
+        </button>
+    </div>
+</div>
+
+<div id="contextModal" class="overlay" onclick="goBack()">
+    <div class="modal-clean" onclick="event.stopPropagation()">
+        <div style="text-align: center; padding: 20px 0 10px 0; color: var(--primary); font-weight: 700;">خيارات</div>
+        <div class="action-list">
+            <div class="action-item" onclick="ctxAction('copy')">
+                <span>نسخ</span>
+                <svg width="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </div>
+            <div class="action-item" onclick="ctxAction('edit')">
+                <span>تعديل</span>
+                <svg width="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </div>
+            <div class="action-item" onclick="ctxAction('delete')">
+                <span>حذف</span>
+                <svg width="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="confirmModal" class="overlay">
+    <div class="modal">
+        <h3 id="confirmTitle">تنبيه</h3>
+        <p id="confirmMessage" style="color:#6b7280; margin-bottom:20px">هل أنت متأكد؟</p>
+        <div class="modal-actions">
+            <button class="btn-small btn-cancel" onclick="goBack()">إلغاء</button>
+            <button class="btn-small btn-confirm" id="confirmYesBtn">نعم</button>
+        </div>
+    </div>
+</div>
+
+<div id="passwordModal" class="overlay">
+    <div class="modal">
+        <h3 id="passModalTitle">أدخل الرمز</h3>
+        <input type="password" id="globalPassInput" style="text-align:center; font-size:24px; letter-spacing:5px; width:100%; border:1px solid var(--gray-border); padding:10px; border-radius:10px; background:var(--surface); color:var(--text);" placeholder="••••" inputmode="numeric">
+        <div class="modal-actions">
+            <button class="btn-small btn-cancel" onclick="goBack()">إلغاء</button>
+            <button class="btn-small btn-confirm" onclick="submitPassword()">تأكيد</button>
+        </div>
+    </div>
+</div>
+
+<div id="folderSelectModal" class="overlay" onclick="goBack()">
+    <div class="modal" onclick="event.stopPropagation()">
+        <h3 id="folderModalTitle">اختر المجلد</h3>
+        <div class="folder-list-modal" id="folderListModalBody"></div>
+        <div class="modal-actions"><button class="btn-small btn-cancel" onclick="goBack()">إلغاء</button></div>
+    </div>
+</div>
+
+<div id="addFolderModal" class="overlay">
+    <div class="modal">
+        <h3 id="addFolderTitle">مجلد جديد</h3>
+        <input type="text" id="folderNameInput" class="app-input" placeholder="اسم المجلد">
+        <div class="modal-actions">
+            <button class="btn-small btn-cancel" onclick="goBack()">إلغاء</button>
+            <button class="btn-small btn-confirm" onclick="submitFolder()">حفظ</button>
+        </div>
+    </div>
+</div>
+
+<div id="backupModal" class="overlay" onclick="goBack()">
+    <div class="modal" onclick="event.stopPropagation()">
+        <h3>نسخ احتياطي</h3>
+        <textarea id="backupText" style="width:100%; height:100px; border:1px solid var(--gray-border); border-radius:12px; padding:10px; resize:none; background:var(--surface); color:var(--text);" readonly></textarea>
+        <div class="modal-actions">
+            <button class="btn-small btn-confirm" onclick="copyBackup()">نسخ</button>
+            <button class="btn-small btn-cancel" onclick="goBack()">إغلاق</button>
+        </div>
+    </div>
+</div>
+
+<div id="importModal" class="overlay" onclick="goBack()">
+    <div class="modal" onclick="event.stopPropagation()">
+        <h3>استيراد بيانات</h3>
+        <textarea id="importText" style="width:100%; height:100px; border:1px solid var(--gray-border); border-radius:12px; padding:10px; resize:none; background:var(--surface); color:var(--text);" placeholder="الصق الكود هنا"></textarea>
+        <div class="modal-actions" style="flex-direction: column; gap:10px">
+            <button class="btn-small btn-cancel" onclick="pasteFromClipboard()" style="width:100%">لصق</button>
+            <div style="display:flex; gap:10px; width:100%">
+                <button class="btn-small btn-confirm" onclick="performImport()">استعادة</button>
+                <button class="btn-small btn-cancel" onclick="goBack()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="sortModal" class="overlay" onclick="goBack()">
+    <div class="modal-clean" onclick="event.stopPropagation()">
+        <div style="text-align: center; padding: 20px 0 10px 0; color: var(--primary); font-weight: 700;">ترتيب حسب</div>
+        <div class="action-list">
+            <div class="action-item" onclick="applySort('newest')">
+                <span>الأحدث</span>
+                <span id="check-newest" style="color:var(--primary); font-weight:bold; display:none;">✔</span>
+            </div>
+            <div class="action-item" onclick="applySort('oldest')">
+                <span>الأقدم</span>
+                <span id="check-oldest" style="color:var(--primary); font-weight:bold; display:none;">✔</span>
+            </div>
+            <div class="action-item" onclick="applySort('az')">
+                <span>أ - ي</span>
+                <span id="check-az" style="color:var(--primary); font-weight:bold; display:none;">✔</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
