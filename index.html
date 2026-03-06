@@ -145,7 +145,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </button>
                 <button class="icon-btn back-btn" onclick="goBack()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 19 12 5"></polyline></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 19 12 12 5"></polyline></svg>
                 </button>
             </div>
         </div>
@@ -156,11 +156,9 @@
                 <input type="text" id="searchInput" style="width: 100%; padding: 15px 40px 15px 40px; border-radius: 15px; border: 1px solid var(--gray-border); background: var(--surface); color: var(--text); margin:0; font-family:'Tajawal'" placeholder="بحث سريع..." oninput="renderVault()">
                 <div id="clearSearchBtn" onclick="clearSearch()" style="display:none; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); cursor:pointer; color:var(--danger); font-weight:bold; font-size:18px;">✕</div>
             </div>
-            <select id="sortSelect" onchange="renderVault()" class="app-input" style="width: auto; padding: 0 10px; border-radius: 15px;">
-                <option value="newest">الأحدث</option>
-                <option value="oldest">الأقدم</option>
-                <option value="az">أ-ي</option>
-            </select>
+            <button class="icon-btn" onclick="openSortModal()" style="border-radius: 15px; width: 52px; flex-shrink: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h12M3 18h6"/></svg>
+            </button>
         </div>
 
         <div class="folders-bar" id="foldersBar">
@@ -266,6 +264,26 @@
             <div style="display:flex; gap:10px; width:100%">
                 <button class="btn-small btn-confirm" onclick="performImport()">استعادة</button>
                 <button class="btn-small btn-cancel" onclick="goBack()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="sortModal" class="overlay" onclick="goBack()">
+    <div class="modal-clean" onclick="event.stopPropagation()">
+        <div style="text-align: center; padding: 20px 0 10px 0; color: var(--primary); font-weight: 700;">ترتيب حسب</div>
+        <div class="action-list">
+            <div class="action-item" onclick="applySort('newest')">
+                <span>الأحدث</span>
+                <span id="check-newest" style="color:var(--primary); font-weight:bold; display:none;">✔</span>
+            </div>
+            <div class="action-item" onclick="applySort('oldest')">
+                <span>الأقدم</span>
+                <span id="check-oldest" style="color:var(--primary); font-weight:bold; display:none;">✔</span>
+            </div>
+            <div class="action-item" onclick="applySort('az')">
+                <span>أ - ي</span>
+                <span id="check-az" style="color:var(--primary); font-weight:bold; display:none;">✔</span>
             </div>
         </div>
     </div>

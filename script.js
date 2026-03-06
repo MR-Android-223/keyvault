@@ -17,6 +17,7 @@ let accounts = [];
 let folders = ["عام", "فيسبوك", "جوجل"];
 let unsubscribeVault = null;
 
+let currentSortMode = 'newest';
 let longPressTimer, isLongPress = false;
 let currentCtxId = null, currentCtxType = null;
 let pendingCallback = null;
@@ -394,7 +395,7 @@ function renderVault() {
     if (activeFolder !== 'All') displayAccounts = displayAccounts.filter(acc => acc.folder === activeFolder);
     if(searchVal) displayAccounts = displayAccounts.filter(acc => (acc.email && acc.email.toLowerCase().includes(searchVal)) || (acc.pass && acc.pass.toLowerCase().includes(searchVal)));
     
-    const sortMode = document.getElementById('sortSelect') ? document.getElementById('sortSelect').value : 'newest';
+    const sortMode = currentSortMode;
     if (sortMode === 'newest') {
         displayAccounts.sort((a, b) => (b.id || 0) - (a.id || 0));
     } else if (sortMode === 'oldest') {
@@ -869,4 +870,19 @@ function sendToKodular(message) {
     if (window.AppInventor && window.AppInventor.setWebViewString) {
         window.AppInventor.setWebViewString(message);
     }
+}
+
+function openSortModal() {
+    document.getElementById('check-newest').style.display = currentSortMode === 'newest' ? 'inline' : 'none';
+    document.getElementById('check-oldest').style.display = currentSortMode === 'oldest' ? 'inline' : 'none';
+    document.getElementById('check-az').style.display = currentSortMode === 'az' ? 'inline' : 'none';
+    showOverlay('sortModal');
+}
+
+function applySort(mode) {
+    currentSortMode = mode;
+    goBack();
+    setTimeout(() => {
+        renderVault();
+    }, 200);
 }
