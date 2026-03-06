@@ -139,20 +139,28 @@ function importDataWrapper(e) {
             const rawAccounts = Array.isArray(imported) ? imported : (imported.accounts || []);
             const newFolders = imported.folders || ["عام"];
 
-            const seenEmails = new Set(accounts.map(a => (a.email || "").trim().toLowerCase()));
+            // فلترة ذكية تعتمد على (الإيميل + القسم) معاً لمنع التكرار في نفس القسم
+            const seenCombinations = new Set(accounts.map(a => {
+                const em = (a.email || "").trim().toLowerCase();
+                const fol = a.folder || "عام";
+                return `${em}|${fol}`;
+            }));
+            
             const cleanAccounts = [];
 
             rawAccounts.forEach(importedAcc => {
                 const rawEmail = importedAcc.email || importedAcc.title || "مستورد";
                 const emailLower = rawEmail.trim().toLowerCase();
+                const folder = importedAcc.folder || "عام";
+                const combo = `${emailLower}|${folder}`;
 
-                if (!seenEmails.has(emailLower)) {
-                    seenEmails.add(emailLower);
+                if (!seenCombinations.has(combo)) {
+                    seenCombinations.add(combo);
                     cleanAccounts.push({
                         id: importedAcc.id || Date.now() + Math.random(),
                         email: rawEmail,
                         pass: importedAcc.pass || "...",
-                        folder: importedAcc.folder || "عام"
+                        folder: folder
                     });
                 }
             });
@@ -163,12 +171,18 @@ function importDataWrapper(e) {
                 if(!folders.includes(f)) folders.push(f);
             });
 
+            cleanAccounts.forEach(acc => {
+                if (acc.folder && !folders.includes(acc.folder)) {
+                    folders.push(acc.folder);
+                }
+            });
+
             saveToCloud();
             renderFoldersBar();
             renderVault();
 
             if (cleanAccounts.length === 0 && rawAccounts.length > 0) {
-                showToast("جميع حسابات الملف موجودة مسبقا");
+                showToast("جميع حسابات الملف موجودة مسبقاً في أقسامها");
             } else {
                 showToast("تم استعادة البيانات بنجاح");
             }
@@ -242,24 +256,29 @@ function submitPassword() {
 function prepareSaveAccount() {
     const email = document.getElementById('emailInput').value.trim();
     if (!email) {
-        showToast("أدخل البيانات أولا");
+        showToast("أدخل البيانات أولاً");
         return;
     }
-
-    const lowerEmail = email.toLowerCase();
-    const isDuplicate = accounts.some(acc => (acc.email || "").trim().toLowerCase() === lowerEmail);
-    if (isDuplicate) {
-        showToast("هذا الحساب موجود مسبقا");
-        return;
-    }
-
+    // شلنا الفلتر من هون، رح نفحص التكرار بداخل دالة الحفظ بعد ما تختار القسم
     isMoveAction = false;
     openFolderSelectModal("حفظ في");
 }
 
 function saveAccount(targetFolder) {
-    const email = document.getElementById('emailInput').value;
+    const email = document.getElementById('emailInput').value.trim();
     const pass = document.getElementById('passInput').value;
+    
+    // الفحص صار هون: هل الإيميل موجود بنفس القسم اللي اخترته؟
+    const lowerEmail = email.toLowerCase();
+    const isDuplicate = accounts.some(acc => 
+        (acc.email || "").trim().toLowerCase() === lowerEmail && acc.folder === targetFolder
+    );
+
+    if (isDuplicate) {
+        showToast("هذا الحساب موجود مسبقاً في هذا القسم");
+        return;
+    }
+
     accounts.unshift({ id: Date.now(), email, pass, folder: targetFolder });
     saveToCloud();
     document.getElementById('emailInput').value = '';
@@ -512,7 +531,8 @@ function saveNewOrder() {
 
 function startPress(type, id) {
     isLongPress = false;
-    longPressTimer = setTimeout(() => { isLongPress = true; openContextMenu(type, id); }, 600);
+    // كبرنا مدة الضغطة المطولة للـ 800 مشان السكرول
+    longPressTimer = setTimeout(() => { isLongPress = true; openContextMenu(type, id); }, 800);
 }
 function cancelPress() { clearTimeout(longPressTimer); }
 
@@ -667,20 +687,28 @@ function performImport() {
         const rawAccounts = Array.isArray(data) ? data : (data.accounts || []);
         const newFolders = data.folders || [];
 
-        const seenEmails = new Set(accounts.map(a => (a.email || "").trim().toLowerCase()));
+        // فلترة ذكية تعتمد على (الإيميل + القسم) معاً لمنع التكرار في نفس القسم
+        const seenCombinations = new Set(accounts.map(a => {
+            const em = (a.email || "").trim().toLowerCase();
+            const fol = a.folder || "عام";
+            return `${em}|${fol}`;
+        }));
+        
         const cleanAccounts = [];
 
         rawAccounts.forEach(importedAcc => {
             const rawEmail = importedAcc.email || importedAcc.title || "مستورد";
             const emailLower = rawEmail.trim().toLowerCase();
+            const folder = importedAcc.folder || "عام";
+            const combo = `${emailLower}|${folder}`;
 
-            if (!seenEmails.has(emailLower)) {
-                seenEmails.add(emailLower);
+            if (!seenCombinations.has(combo)) {
+                seenCombinations.add(combo);
                 cleanAccounts.push({
                     id: importedAcc.id || Date.now() + Math.random(),
                     email: rawEmail,
                     pass: importedAcc.pass || "...",
-                    folder: importedAcc.folder || "عام"
+                    folder: folder
                 });
             }
         });
@@ -704,7 +732,7 @@ function performImport() {
         goBack();
 
         if (cleanAccounts.length === 0 && rawAccounts.length > 0) {
-            showToast("جميع الحسابات موجودة مسبقا");
+            showToast("جميع الحسابات موجودة مسبقاً في أقسامها");
         } else {
             showToast("تم الاستيراد بنجاح");
         }
@@ -761,3 +789,11 @@ function sendToKodular(message) {
         window.AppInventor.setWebViewString(message);
     }
 }
+
+// حل مشكلة فتح القائمة بالغلط أثناء التمرير
+document.addEventListener('DOMContentLoaded', () => {
+    const vaultList = document.getElementById('vaultList');
+    if (vaultList) {
+        vaultList.addEventListener('scroll', cancelPress);
+    }
+});
