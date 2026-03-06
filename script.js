@@ -138,22 +138,36 @@ function importDataWrapper(e) {
             const imported = JSON.parse(f.target.result);
             const rawAccounts = Array.isArray(imported) ? imported : (imported.accounts || []);
             const newFolders = imported.folders || ["عام"];
-            
-            const uniqueNewAccounts = rawAccounts.filter(importedAcc => {
-                const importedEmail = importedAcc.email || importedAcc.title || "مستورد";
-                return !accounts.some(existingAcc => existingAcc.email === importedEmail);
+
+            const seenEmails = new Set(accounts.map(a => (a.email || "").trim().toLowerCase()));
+            const cleanAccounts = [];
+
+            rawAccounts.forEach(importedAcc => {
+                const rawEmail = importedAcc.email || importedAcc.title || "مستورد";
+                const emailLower = rawEmail.trim().toLowerCase();
+
+                if (!seenEmails.has(emailLower)) {
+                    seenEmails.add(emailLower);
+                    cleanAccounts.push({
+                        id: importedAcc.id || Date.now() + Math.random(),
+                        email: rawEmail,
+                        pass: importedAcc.pass || "...",
+                        folder: importedAcc.folder || "عام"
+                    });
+                }
             });
 
-            const clean = uniqueNewAccounts.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
-            accounts = [...accounts, ...clean];
-            
+            accounts = [...accounts, ...cleanAccounts];
+
             newFolders.forEach(f => {
                 if(!folders.includes(f)) folders.push(f);
             });
-            
+
             saveToCloud();
-            
-            if (clean.length === 0 && rawAccounts.length > 0) {
+            renderFoldersBar();
+            renderVault();
+
+            if (cleanAccounts.length === 0 && rawAccounts.length > 0) {
                 showToast("جميع حسابات الملف موجودة مسبقا");
             } else {
                 showToast("تم استعادة البيانات بنجاح");
@@ -227,12 +241,13 @@ function submitPassword() {
 
 function prepareSaveAccount() {
     const email = document.getElementById('emailInput').value.trim();
-    if (!email) { 
-        showToast("أدخل البيانات أولا"); 
-        return; 
+    if (!email) {
+        showToast("أدخل البيانات أولا");
+        return;
     }
-    
-    const isDuplicate = accounts.some(acc => acc.email === email);
+
+    const lowerEmail = email.toLowerCase();
+    const isDuplicate = accounts.some(acc => (acc.email || "").trim().toLowerCase() === lowerEmail);
     if (isDuplicate) {
         showToast("هذا الحساب موجود مسبقا");
         return;
@@ -647,25 +662,31 @@ function performImport() {
             showToast("الرجاء لصق الكود أولا");
             return;
         }
-        
+
         const data = JSON.parse(textValue);
         const rawAccounts = Array.isArray(data) ? data : (data.accounts || []);
         const newFolders = data.folders || [];
-        
-        const uniqueNewAccounts = rawAccounts.filter(importedAcc => {
-            const importedEmail = importedAcc.email || importedAcc.title || "مستورد";
-            return !accounts.some(existingAcc => existingAcc.email === importedEmail);
+
+        const seenEmails = new Set(accounts.map(a => (a.email || "").trim().toLowerCase()));
+        const cleanAccounts = [];
+
+        rawAccounts.forEach(importedAcc => {
+            const rawEmail = importedAcc.email || importedAcc.title || "مستورد";
+            const emailLower = rawEmail.trim().toLowerCase();
+
+            if (!seenEmails.has(emailLower)) {
+                seenEmails.add(emailLower);
+                cleanAccounts.push({
+                    id: importedAcc.id || Date.now() + Math.random(),
+                    email: rawEmail,
+                    pass: importedAcc.pass || "...",
+                    folder: importedAcc.folder || "عام"
+                });
+            }
         });
 
-        const cleanAccounts = uniqueNewAccounts.map(a => ({ 
-            id: a.id || Date.now() + Math.random(), 
-            email: a.email || a.title || "مستورد", 
-            pass: a.pass || "...", 
-            folder: a.folder || "عام" 
-        }));
-        
         accounts = [...accounts, ...cleanAccounts];
-        
+
         newFolders.forEach(f => {
             if(!folders.includes(f)) folders.push(f);
         });
@@ -680,16 +701,16 @@ function performImport() {
         renderFoldersBar();
         renderVault();
         document.getElementById('importText').value = '';
-        goBack(); 
-        
+        goBack();
+
         if (cleanAccounts.length === 0 && rawAccounts.length > 0) {
             showToast("جميع الحسابات موجودة مسبقا");
         } else {
             showToast("تم الاستيراد بنجاح");
         }
-    } catch(e) { 
+    } catch(e) {
         console.error(e);
-        showToast("كود غير صالح"); 
+        showToast("كود غير صالح");
     }
 }
 
