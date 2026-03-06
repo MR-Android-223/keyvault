@@ -136,16 +136,29 @@ function importDataWrapper(e) {
     reader.onload = (f) => {
         try {
             const imported = JSON.parse(f.target.result);
-            const newAccounts = Array.isArray(imported) ? imported : (imported.accounts || []);
+            const rawAccounts = Array.isArray(imported) ? imported : (imported.accounts || []);
             const newFolders = imported.folders || ["عام"];
-            const clean = newAccounts.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
+            
+            const uniqueNewAccounts = rawAccounts.filter(importedAcc => {
+                const importedEmail = importedAcc.email || importedAcc.title || "مستورد";
+                return !accounts.some(existingAcc => existingAcc.email === importedEmail);
+            });
+
+            const clean = uniqueNewAccounts.map(a => ({ id: a.id || Date.now()+Math.random(), email: a.email || a.title || "مستورد", pass: a.pass||"...", folder: a.folder||"عام" }));
             accounts = [...accounts, ...clean];
+            
             newFolders.forEach(f => {
                 if(!folders.includes(f)) folders.push(f);
             });
+            
             saveToCloud();
-            showToast("تم استعادة البيانات بنجاح");
-        } catch(e){
+            
+            if (clean.length === 0 && rawAccounts.length > 0) {
+                showToast("جميع حسابات الملف موجودة مسبقا");
+            } else {
+                showToast("تم استعادة البيانات بنجاح");
+            }
+        } catch(err){
             showToast("ملف غير صالح");
         }
     };
@@ -213,8 +226,18 @@ function submitPassword() {
 }
 
 function prepareSaveAccount() {
-    const email = document.getElementById('emailInput').value;
-    if (!email) { showToast("أدخل البيانات أولا"); return; }
+    const email = document.getElementById('emailInput').value.trim();
+    if (!email) { 
+        showToast("أدخل البيانات أولا"); 
+        return; 
+    }
+    
+    const isDuplicate = accounts.some(acc => acc.email === email);
+    if (isDuplicate) {
+        showToast("هذا الحساب موجود مسبقا");
+        return;
+    }
+
     isMoveAction = false;
     openFolderSelectModal("حفظ في");
 }
@@ -621,7 +644,7 @@ function performImport() {
     try {
         const textValue = document.getElementById('importText').value.trim();
         if (!textValue) {
-            showToast("الرجاء لصق الكود أولاً");
+            showToast("الرجاء لصق الكود أولا");
             return;
         }
         
@@ -629,7 +652,12 @@ function performImport() {
         const rawAccounts = Array.isArray(data) ? data : (data.accounts || []);
         const newFolders = data.folders || [];
         
-        const cleanAccounts = rawAccounts.map(a => ({ 
+        const uniqueNewAccounts = rawAccounts.filter(importedAcc => {
+            const importedEmail = importedAcc.email || importedAcc.title || "مستورد";
+            return !accounts.some(existingAcc => existingAcc.email === importedEmail);
+        });
+
+        const cleanAccounts = uniqueNewAccounts.map(a => ({ 
             id: a.id || Date.now() + Math.random(), 
             email: a.email || a.title || "مستورد", 
             pass: a.pass || "...", 
@@ -653,7 +681,12 @@ function performImport() {
         renderVault();
         document.getElementById('importText').value = '';
         goBack(); 
-        showToast("تم الاستيراد بنجاح");
+        
+        if (cleanAccounts.length === 0 && rawAccounts.length > 0) {
+            showToast("جميع الحسابات موجودة مسبقا");
+        } else {
+            showToast("تم الاستيراد بنجاح");
+        }
     } catch(e) { 
         console.error(e);
         showToast("كود غير صالح"); 
