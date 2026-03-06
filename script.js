@@ -27,6 +27,72 @@ let isMoveAction = false;
 let folderRenameTarget = null;
 let vaultPressTimer = null;
 
+document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('themeIcon').innerText = '☀️';
+        document.getElementById('themeText').innerText = 'الوضع الفاتح';
+    }
+    const vaultList = document.getElementById('vaultList');
+    if (vaultList) {
+        vaultList.addEventListener('scroll', cancelPress);
+    }
+});
+
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('darkMode', isDark);
+    document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙';
+    document.getElementById('themeText').innerText = isDark ? 'الوضع الفاتح' : 'الوضع الليلي';
+    document.getElementById('mainMenu').style.display = 'none';
+}
+
+function checkPasswordStrength() {
+    const p = document.getElementById('passInput').value;
+    const wrapper = document.getElementById('strengthContainer');
+    const bar = document.getElementById('strengthBar');
+    const txt = document.getElementById('strengthText');
+    
+    if(!p) { 
+        wrapper.style.display = 'none'; 
+        return; 
+    }
+    
+    wrapper.style.display = 'block';
+    let strength = 0;
+    
+    if(p.length >= 8) strength += 1;
+    if(/[A-Za-z]/.test(p)) strength += 1;
+    if(/[0-9]/.test(p)) strength += 1;
+    if(/[^A-Za-z0-9]/.test(p)) strength += 1;
+    
+    if(strength <= 1 || p.length < 4) { 
+        bar.style.width = '33%'; 
+        bar.style.backgroundColor = '#ef4444'; 
+        txt.innerText = 'ضعيفة'; 
+        txt.style.color = '#ef4444'; 
+    }
+    else if(strength === 2 || strength === 3) { 
+        bar.style.width = '66%'; 
+        bar.style.backgroundColor = '#f59e0b'; 
+        txt.innerText = 'متوسطة'; 
+        txt.style.color = '#f59e0b'; 
+    }
+    else { 
+        bar.style.width = '100%'; 
+        bar.style.backgroundColor = '#10b981'; 
+        txt.innerText = 'قوية'; 
+        txt.style.color = '#10b981'; 
+    }
+}
+
+function clearSearch() {
+    const el = document.getElementById('searchInput');
+    if(el) el.value = '';
+    renderVault();
+}
+
 auth.onAuthStateChanged(user => {
     if (user) {
         document.getElementById('loginOverlay').style.display = 'none';
@@ -139,7 +205,6 @@ function importDataWrapper(e) {
             const rawAccounts = Array.isArray(imported) ? imported : (imported.accounts || []);
             const newFolders = imported.folders || ["عام"];
 
-            // فلترة ذكية تعتمد على (الإيميل + القسم) معاً لمنع التكرار في نفس القسم
             const seenCombinations = new Set(accounts.map(a => {
                 const em = (a.email || "").trim().toLowerCase();
                 const fol = a.folder || "عام";
@@ -182,7 +247,7 @@ function importDataWrapper(e) {
             renderVault();
 
             if (cleanAccounts.length === 0 && rawAccounts.length > 0) {
-                showToast("جميع حسابات الملف موجودة مسبقاً في أقسامها");
+                showToast("جميع حسابات الملف موجودة مسبقاً");
             } else {
                 showToast("تم استعادة البيانات بنجاح");
             }
@@ -215,6 +280,7 @@ function goBack() {
     });
     
     if(!visible && document.getElementById('vaultPage').style.display === 'flex') {
+        clearSearch();
         document.getElementById('vaultPage').style.display = 'none';
     }
 }
@@ -232,6 +298,7 @@ window.onpopstate = () => {
     if(!closedModal) {
         const vault = document.getElementById('vaultPage');
         if(vault.style.display === 'flex') {
+            clearSearch();
             vault.style.display = 'none';
         }
     }
@@ -259,7 +326,6 @@ function prepareSaveAccount() {
         showToast("أدخل البيانات أولاً");
         return;
     }
-    // شلنا الفلتر من هون، رح نفحص التكرار بداخل دالة الحفظ بعد ما تختار القسم
     isMoveAction = false;
     openFolderSelectModal("حفظ في");
 }
@@ -268,7 +334,6 @@ function saveAccount(targetFolder) {
     const email = document.getElementById('emailInput').value.trim();
     const pass = document.getElementById('passInput').value;
     
-    // الفحص صار هون: هل الإيميل موجود بنفس القسم اللي اخترته؟
     const lowerEmail = email.toLowerCase();
     const isDuplicate = accounts.some(acc => 
         (acc.email || "").trim().toLowerCase() === lowerEmail && acc.folder === targetFolder
@@ -283,6 +348,7 @@ function saveAccount(targetFolder) {
     saveToCloud();
     document.getElementById('emailInput').value = '';
     document.getElementById('passInput').value = '';
+    document.getElementById('strengthContainer').style.display = 'none';
     showToast("تم الحفظ في السحابة");
 }
 
@@ -318,11 +384,27 @@ function renderFoldersBar() {
 function renderVault() {
     const list = document.getElementById('vaultList');
     const searchVal = document.getElementById('searchInput').value.toLowerCase();
+    const clearBtn = document.getElementById('clearSearchBtn');
+    
+    if(clearBtn) clearBtn.style.display = searchVal ? 'block' : 'none';
+    
     list.innerHTML = '';
-    let displayAccounts = accounts;
+    let displayAccounts = [...accounts];
+    
     if (activeFolder !== 'All') displayAccounts = displayAccounts.filter(acc => acc.folder === activeFolder);
     if(searchVal) displayAccounts = displayAccounts.filter(acc => (acc.email && acc.email.toLowerCase().includes(searchVal)) || (acc.pass && acc.pass.toLowerCase().includes(searchVal)));
-    if(displayAccounts.length === 0) { list.innerHTML = '<p style="text-align:center;color:#ccc;margin-top:40px">لا توجد بيانات</p>'; return; }
+    
+    const sortMode = document.getElementById('sortSelect') ? document.getElementById('sortSelect').value : 'newest';
+    if (sortMode === 'newest') {
+        displayAccounts.sort((a, b) => (b.id || 0) - (a.id || 0));
+    } else if (sortMode === 'oldest') {
+        displayAccounts.sort((a, b) => (a.id || 0) - (b.id || 0));
+    } else if (sortMode === 'az') {
+        displayAccounts.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
+    }
+
+    if(displayAccounts.length === 0) { list.innerHTML = '<p style="text-align:center;color:#9ca3af;margin-top:40px">لا توجد بيانات</p>'; return; }
+    
     displayAccounts.forEach(acc => {
         const card = document.createElement('div');
         card.className = `account-card ${selectedIds.has(acc.id) ? 'selected-card' : ''}`;
@@ -335,7 +417,7 @@ function renderVault() {
         } else if (!searchVal && activeFolder !== 'All') {
             leftSide = `<div class="drag-handle-visible" onmousedown="initDrag(event)" ontouchstart="initDrag(event)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></div>`;
         } else {
-             leftSide = `<div style="width:24px; display:flex; justify-content:center"><div style="width:6px; height:6px; background:#e5e7eb; border-radius:50%"></div></div>`;
+             leftSide = `<div style="width:24px; display:flex; justify-content:center"><div style="width:6px; height:6px; background:var(--gray-border); border-radius:50%"></div></div>`;
         }
         card.innerHTML = `
             ${leftSide}
@@ -531,7 +613,6 @@ function saveNewOrder() {
 
 function startPress(type, id) {
     isLongPress = false;
-    // كبرنا مدة الضغطة المطولة للـ 800 مشان السكرول
     longPressTimer = setTimeout(() => { isLongPress = true; openContextMenu(type, id); }, 800);
 }
 function cancelPress() { clearTimeout(longPressTimer); }
@@ -574,7 +655,7 @@ function safeToggleMenu(e) {
     } else {
         if (appPass) {
             openPasswordModal("رمز القائمة", (v) => {
-                if (v === appPass) m.style.display = 'flex'; else showToast("خطأ");
+                if (CryptoJS.SHA256(v).toString() === appPass) m.style.display = 'flex'; else showToast("خطأ");
             });
         } else m.style.display = 'flex';
     }
@@ -585,7 +666,7 @@ function handleAppLockSettings() {
     const appPass = localStorage.getItem('appPass');
     if(appPass) {
         openPasswordModal("أدخل الرمز لإزالته", (v) => {
-            if(v === appPass) { 
+            if(CryptoJS.SHA256(v).toString() === appPass) { 
                 localStorage.removeItem('appPass'); 
                 showToast("تم إزالة القفل");
             }
@@ -594,7 +675,7 @@ function handleAppLockSettings() {
     } else {
         openPasswordModal("تعيين رمز جديد", (v) => { 
             if(v) { 
-                localStorage.setItem('appPass', v); 
+                localStorage.setItem('appPass', CryptoJS.SHA256(v).toString()); 
                 showToast("تم القفل");
             } 
         });
@@ -636,14 +717,14 @@ function cancelVaultPress() { clearTimeout(vaultPressTimer); }
 function handleVaultLongPress() {
     const vp = localStorage.getItem('vaultPass');
     if(vp) openPasswordModal("إزالة قفل الخزنة", v => { 
-        if(v===vp){ 
+        if(CryptoJS.SHA256(v).toString() === vp){ 
             localStorage.removeItem('vaultPass'); 
             showToast("تم الإلغاء"); 
         } else showToast("خطأ"); 
     });
     else openPasswordModal("قفل الخزنة", v => { 
         if(v){ 
-            localStorage.setItem('vaultPass', v); 
+            localStorage.setItem('vaultPass', CryptoJS.SHA256(v).toString()); 
             showToast("تم القفل");
         } 
     });
@@ -651,7 +732,7 @@ function handleVaultLongPress() {
 function openVaultCheck() {
     if(isLongPress) return;
     const vp = localStorage.getItem('vaultPass');
-    if(vp) openPasswordModal("رمز الخزنة", v => { if(v===vp) openVault(); else showToast("خطأ"); });
+    if(vp) openPasswordModal("رمز الخزنة", v => { if(CryptoJS.SHA256(v).toString() === vp) openVault(); else showToast("خطأ"); });
     else openVault();
 }
 function openVault() {
@@ -687,7 +768,6 @@ function performImport() {
         const rawAccounts = Array.isArray(data) ? data : (data.accounts || []);
         const newFolders = data.folders || [];
 
-        // فلترة ذكية تعتمد على (الإيميل + القسم) معاً لمنع التكرار في نفس القسم
         const seenCombinations = new Set(accounts.map(a => {
             const em = (a.email || "").trim().toLowerCase();
             const fol = a.folder || "عام";
@@ -771,6 +851,7 @@ function handleAndroidBack() {
         return;
     }
     if (document.getElementById('vaultPage').style.display === 'flex') {
+        clearSearch();
         document.getElementById('vaultPage').style.display = 'none';
         if(window.history.state) window.history.back();
         sendToKodular("STAY");
@@ -789,11 +870,3 @@ function sendToKodular(message) {
         window.AppInventor.setWebViewString(message);
     }
 }
-
-// حل مشكلة فتح القائمة بالغلط أثناء التمرير
-document.addEventListener('DOMContentLoaded', () => {
-    const vaultList = document.getElementById('vaultList');
-    if (vaultList) {
-        vaultList.addEventListener('scroll', cancelPress);
-    }
-});

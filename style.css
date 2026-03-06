@@ -10,6 +10,13 @@
     --google-blue: #1a73e8;
 }
 
+body.dark-mode {
+    --bg: #0f172a;
+    --surface: rgba(30, 41, 59, 0.7);
+    --text: #f8fafc;
+    --gray-border: rgba(255, 255, 255, 0.1);
+}
+
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body {
@@ -20,10 +27,44 @@ body {
     overflow-x: hidden; display: flex; flex-direction: column;
     padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
     user-select: none; -webkit-user-select: none;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 input, textarea {
     user-select: auto; -webkit-user-select: auto;
+}
+
+body.dark-mode .app-input, 
+body.dark-mode .modal, 
+body.dark-mode .main-menu, 
+body.dark-mode .account-card, 
+body.dark-mode .folder-chip, 
+body.dark-mode .icon-btn, 
+body.dark-mode .modal-clean {
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--gray-border);
+    color: var(--text);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-mode .vault-fixed-top { background: var(--bg); }
+body.dark-mode .card-email { color: var(--text); }
+body.dark-mode .card-pass-pill { background: rgba(255, 255, 255, 0.05); color: var(--text); }
+body.dark-mode .folder-chip { color: #cbd5e1; }
+body.dark-mode .folder-chip.active { color: white; }
+body.dark-mode .menu-btn { background: rgba(255, 255, 255, 0.1); color: var(--text); }
+body.dark-mode .menu-item { color: var(--text); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+body.dark-mode .menu-item:hover { background: rgba(255, 255, 255, 0.05); }
+body.dark-mode select option { background: var(--bg); color: var(--text); }
+
+#importText {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    -webkit-touch-callout: default !important;
 }
 
 #loginOverlay {
@@ -59,7 +100,7 @@ header {
     height: var(--header-height); padding: 0 20px;
     display: grid; grid-template-columns: 45px 1fr 45px;
     align-items: center; position: relative; margin-bottom: 10px;
-    background: var(--bg);
+    background: var(--bg); transition: 0.3s;
 }
 
 h1 {
@@ -89,9 +130,8 @@ h1 {
     font-size: 15px; font-weight: 500; display: flex; align-items: center; justify-content: space-between; color: #4b5563;
 }
 .menu-item:last-child { border-bottom: none; }
-.menu-item:active { background: #f9fafb; }
-.delete-item { color: var(--danger); }
-.sync-item { background: #f0f9ff; color: var(--primary-dark); }
+.menu-item:active { background: rgba(0,0,0,0.05); }
+.delete-item { color: var(--danger) !important; }
 
 .user-profile-img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
 
@@ -115,18 +155,19 @@ h1 {
 }
 .btn-primary { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; box-shadow: 0 8px 20px -4px rgba(124, 58, 237, 0.4); }
 .btn-primary:active { transform: scale(0.98); }
-.btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); margin-top: 5px; }
-.btn-outline:active { background: #f5f3ff; transform: scale(0.98); }
+.btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); margin-top: 5px; }
+.btn-outline:active { background: rgba(139, 92, 246, 0.1); transform: scale(0.98); }
 
 #vaultPage {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: #f9fafb; z-index: 200; display: none; flex-direction: column;
+    background: var(--bg); z-index: 200; display: none; flex-direction: column;
     overflow: hidden; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+    transition: background-color 0.3s;
 }
 
 .vault-fixed-top {
     padding: 10px 20px 5px 20px; background: #f9fafb; flex-shrink: 0;
-    display: flex; flex-direction: column; gap: 10px; z-index: 10;
+    display: flex; flex-direction: column; gap: 10px; z-index: 10; transition: 0.3s;
 }
 
 #vaultList {
@@ -136,7 +177,7 @@ h1 {
 .vault-header { 
     display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; height: 45px;
 }
-.vault-title { color:#1f2937; margin:0; font-size: 20px; font-weight: 700; }
+.vault-title { color: var(--text); margin:0; font-size: 20px; font-weight: 700; }
 
 .header-actions { display: flex; gap: 10px; align-items: center; }
 .icon-btn { 
@@ -156,11 +197,11 @@ h1 {
     transition: 0.2s; display: flex; align-items: center; gap: 5px;
 }
 .folder-chip.active {
-    background: var(--primary); color: white; border-color: var(--primary);
+    background: var(--primary) !important; color: white !important; border-color: var(--primary) !important;
     box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
 }
 .add-folder-btn {
-    background: #f3f4f6; color: var(--primary); font-weight: bold; width: 35px; height: 35px;
+    background: rgba(139, 92, 246, 0.1); color: var(--primary); font-weight: bold; width: 35px; height: 35px;
     border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     border: 1px dashed var(--primary); cursor: pointer;
 }
@@ -172,8 +213,8 @@ h1 {
     transition: transform 0.2s, background-color 0.2s;
     border: 1px solid transparent;
 }
-.account-card.selected-card { background: #f5f3ff; border-color: var(--primary); }
-.account-card.dragging { opacity: 0.6; background: #fafafa; border: 2px dashed #ccc; transform: scale(0.98); }
+.account-card.selected-card { background: rgba(139, 92, 246, 0.1) !important; border-color: var(--primary); }
+.account-card.dragging { opacity: 0.6; transform: scale(0.98); border: 2px dashed #ccc; }
 
 .selection-check {
     width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d1d5db;
@@ -208,7 +249,7 @@ h1 {
 
 .overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.3); backdrop-filter: blur(3px);
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(3px);
     z-index: 900; display: none; justify-content: center; align-items: center;
     padding: 20px; opacity: 0; transition: opacity 0.2s;
 }
@@ -226,14 +267,14 @@ h1 {
 .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
 .btn-small { padding: 12px 20px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; flex: 1; font-size: 14px; }
 .btn-confirm { background: var(--primary); color: white; }
-.btn-cancel { background: #f3f4f6; color: #374151; }
+.btn-cancel { background: rgba(0,0,0,0.05); color: var(--text); }
 
 .folder-list-modal { display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; text-align: right; margin-top: 15px; }
-.folder-item-row { padding: 14px; background: #f9fafb; border-radius: 12px; cursor: pointer; font-weight: 500; border: 1px solid transparent; }
-.folder-item-row:active { background: #e5e7eb; }
+.folder-item-row { padding: 14px; background: rgba(0,0,0,0.02); border-radius: 12px; cursor: pointer; font-weight: 500; border: 1px solid transparent; }
+.folder-item-row:active { background: rgba(0,0,0,0.05); }
 
 .modal-clean { background: white; width: 100%; max-width: 320px; border-radius: 24px; padding: 0; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
-.action-item { display: flex; align-items: center; justify-content: space-between; padding: 18px 25px; border-bottom: 1px solid #f3f4f6; cursor: pointer; color: #374151; font-weight: 500; }
+.action-item { display: flex; align-items: center; justify-content: space-between; padding: 18px 25px; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; color: var(--text); font-weight: 500; }
 .action-item:last-child { border-bottom: none; color: var(--danger); }
 
 .toast {
@@ -244,15 +285,8 @@ h1 {
 }
 
 .sync-loader {
-    display: none; width: 16px; height: 16px; border: 2px solid #ddd;
+    display: none; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.1);
     border-top: 2px solid var(--primary); border-radius: 50%;
     animation: spin 0.8s linear infinite; margin-right: 10px;
 }
 @keyframes spin { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
-#importText {
-    user-select: text !important;
-    -webkit-user-select: text !important;
-    -moz-user-select: text !important;
-    -ms-user-select: text !important;
-    -webkit-touch-callout: default !important;
-}
