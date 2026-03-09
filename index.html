@@ -8,7 +8,7 @@
     
     <meta name="description" content="خزنة أسراري - تطبيق آمن وذكي لحفظ وإدارة كلمات المرور والحسابات.">
     <meta name="robots" content="index, follow">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#ffffff">
     <meta http-equiv="content-language" content="ar">
     <link rel="canonical" href="https://mr-android-223.github.io/keyvault/">
     
@@ -20,6 +20,7 @@
     
     <link rel="icon" href="https://mr-android-223.github.io/keyvault/icon.png" sizes="192x192">
     <link rel="apple-touch-icon" href="https://mr-android-223.github.io/keyvault/icon.png">
+    <link rel="manifest" href="manifest.json">
 
     <script type="application/ld+json">
     {
@@ -316,5 +317,12 @@
 <div id="toast" class="toast"></div>
 
 <script src="script.js"></script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
+
 </body>
 </html>
