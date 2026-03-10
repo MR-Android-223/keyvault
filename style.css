@@ -26,59 +26,6 @@ input, textarea {
     user-select: auto; -webkit-user-select: auto;
 }
 
-#loginOverlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(135deg, #0f172a, #1e293b);
-    z-index: 6000; display: none; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 20px;
-}
-
-.login-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 40px; border-radius: 24px;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-    text-align: center; width: 100%; max-width: 380px;
-    color: white;
-}
-
-.login-card h2 { color: white !important; }
-.login-card p { color: #cbd5e1 !important; }
-
-.vault-icon-container {
-    display: inline-flex; padding: 20px;
-    background: rgba(139, 92, 246, 0.1);
-    border-radius: 50%; border: 1px solid rgba(139, 92, 246, 0.3);
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
-}
-
-.neon-icon { color: #a78bfa; filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.8)); }
-
-.personal-note {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #94a3b8; padding: 10px; border-radius: 12px;
-    margin-bottom: 25px; font-size: 13px; text-align: center;
-}
-
-.btn-neon-login {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    background: white; color: #0f172a; border: none;
-    padding: 14px; border-radius: 14px; font-size: 15px;
-    font-weight: 700; cursor: pointer; width: 100%;
-    transition: all 0.3s ease; text-decoration: none;
-}
-
-.btn-neon-login:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-}
-
-.google-icon-small { width: 20px; height: 20px; }
-
 header {
     height: var(--header-height); padding: 0 20px;
     display: grid; grid-template-columns: 45px 1fr 45px;
