@@ -46,24 +46,29 @@
 <body>
 
 <div style="position: absolute; left: -9999px; top: -9999px;">
-    <h2>مدير كلمات مرور آمن</h2>
-    <p>تطبيق ويب بسيط لحفظ الحسابات وكلمات المرور بشكل مشفر وآمن.</p>
+    <h2>مدير كلمات مرور آمن (مشروع شخصي)</h2>
+    <p>تطبيق ويب بسيط وشخصي لحفظ الحسابات وكلمات المرور بشكل مشفر وآمن. هذا الموقع ليس صفحة تصيد ولا يتبع لأي جهة تجارية.</p>
 </div>
 
 <div id="loginOverlay">
     <div class="login-card">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google" class="google-logo">
-        <h2 style="font-size:24px; font-weight:400; margin:0 0 8px 0; color:#202124;">تسجيل الدخول</h2>
-        <p style="color:#5f6368; margin-bottom:30px;">المتابعة إلى حسابك</p>
+        <div class="vault-icon-container">
+            <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="neon-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        
+        <h2 style="font-size:26px; font-weight:700; margin:15px 0 5px 0;">خزنة أسراري</h2>
+        <p style="margin-bottom:25px; font-size:14px;">مساحتك الآمنة لإدارة حساباتك</p>
 
-        <a href="#" class="google-btn-auth" onclick="event.preventDefault(); startGoogleLogin()">
-            <div class="google-icon-wrapper">
-                <img class="google-icon" src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="G logo"/>
-            </div>
-            <span class="btn-text">المتابعة باستخدام حساب جوجل</span>
+        <div class="personal-note">
+            تطبيق شخصي لإدارة كلمات المرور
+        </div>
+
+        <a href="#" class="btn-neon-login" onclick="event.preventDefault(); startGoogleLogin()">
+            <img class="google-icon-small" src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="G logo"/>
+            <span>الدخول بحساب جوجل</span>
         </a>
 
-        <div id="loginStatus" style="margin-top:20px; font-size:13px; color:var(--primary); display:none;">جاري الاتصال...</div>
+        <div id="loginStatus" style="margin-top:20px; font-size:13px; color:#a78bfa; display:none;">جاري الاتصال...</div>
     </div>
 </div>
 
