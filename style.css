@@ -227,3 +227,49 @@ h1 {
     -ms-user-select: text !important;
     -webkit-touch-callout: default !important;
 }
+body.dark-theme {
+    --bg: #111827;
+    --surface: #1f2937;
+    --text: #f9fafb;
+    --gray-border: #374151;
+}
+
+body.dark-theme .menu-btn,
+body.dark-theme .main-menu,
+body.dark-theme .app-input,
+body.dark-theme .folder-chip,
+body.dark-theme .account-card,
+body.dark-theme .modal,
+body.dark-theme .modal-clean,
+body.dark-theme .icon-btn {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--gray-border);
+}
+
+body.dark-theme .menu-item,
+body.dark-theme .action-item {
+    border-color: var(--gray-border);
+    color: var(--text);
+}
+
+body.dark-theme .menu-item:active,
+body.dark-theme .folder-item-row {
+    background: #374151;
+    color: var(--text);
+}
+
+body.dark-theme .card-email,
+body.dark-theme .vault-title {
+    color: var(--text);
+}
+
+body.dark-theme .card-pass-pill {
+    background: #374151;
+    color: var(--text);
+}
+
+body.dark-theme .vault-fixed-top,
+body.dark-theme #vaultPage {
+    background: var(--bg);
+}

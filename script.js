@@ -802,7 +802,30 @@ function sendToKodular(message) {
     }
 }
 
+function toggleTheme() {
+    const body = document.body;
+    body.classList.toggle('dark-theme');
+    const isDark = body.classList.contains('dark-theme');
+    
+    const themeText = document.getElementById('themeText');
+    const themeIcon = document.getElementById('themeIcon');
+    
+    if (themeText) themeText.innerText = isDark ? "الوضع النهاري" : "الوضع الليلي";
+    if (themeIcon) themeIcon.innerText = isDark ? "☀️" : "🌙";
+    
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-theme');
+        const themeText = document.getElementById('themeText');
+        const themeIcon = document.getElementById('themeIcon');
+        if(themeText) themeText.innerText = "الوضع النهاري";
+        if(themeIcon) themeIcon.innerText = "☀️";
+    }
+
     const vaultList = document.getElementById('vaultList');
     if (vaultList) {
         vaultList.addEventListener('scroll', cancelPress);
