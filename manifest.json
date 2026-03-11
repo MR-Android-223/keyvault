@@ -1,9 +1,9 @@
 {
   "name": "خزنة أسراري",
   "short_name": "الخزنة",
-  "start_url": "/",
-  "scope": "/",
-  "display": "fullscreen",
+  "start_url": "/keyvault/",
+  "scope": "/keyvault/",
+  "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#ffffff",
   "icons": [
